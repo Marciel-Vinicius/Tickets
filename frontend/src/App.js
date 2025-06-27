@@ -1,8 +1,16 @@
 // frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
-  AppBar, Toolbar, Typography, IconButton, Button,
-  Container, Box, CssBaseline, TextField, Paper
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Button,
+  Container,
+  Box,
+  CssBaseline,
+  TextField,
+  Paper
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -17,22 +25,24 @@ import AtendimentoList from './components/AtendimentoList';
 import UserManagement from './components/UserManagement';
 import CategoryManagement from './components/CategoryManagement';
 
-// parsing seguro de JWT
 function parseJwt(token) {
   if (!token) return null;
   try {
-    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(b64);
-    return JSON.parse(decodeURIComponent(
-      json.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-    ));
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
   } catch {
     return null;
   }
 }
 
 export default function App() {
-  // tema
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -41,7 +51,6 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // auth
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [view, setView] = useState('login');
@@ -61,7 +70,6 @@ export default function App() {
   const handleLogin = t => setToken(t);
   const handleLogout = () => setToken(null);
 
-  // atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const fetchAtendimentos = () => {
     if (!token) return;
@@ -70,11 +78,10 @@ export default function App() {
     })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(setAtendimentos)
-      .catch(() => alert('Erro ao conectar ao servidor'));
+      .catch(() => alert('Falha ao conectar ao servidor.'));
   };
   useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
-  // relatório
   const [reportDate, setReportDate] = useState('');
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
@@ -98,28 +105,40 @@ export default function App() {
       <CssBaseline />
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>Sistema de Atendimentos</Typography>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Sistema de Atendimentos
+          </Typography>
           <IconButton color="inherit" onClick={toggleColorMode}>
             {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
           </IconButton>
-          {user && <>
-            <Button color="inherit" onClick={() => setView('atendimentos')}>Atendimentos</Button>
-            {user.sector === 'DEV' && <>
-              <Button color="inherit" onClick={() => setView('users')}>Usuários</Button>
-              <Button color="inherit" onClick={() => setView('categories')}>Categorias</Button>
-            </>}
-            <Button color="inherit" onClick={handleLogout}>Logout</Button>
-          </>}
+          {user && (
+            <>
+              <Button color="inherit" onClick={() => setView('atendimentos')}>
+                Atendimentos
+              </Button>
+              {user.sector === 'DEV' && (
+                <>
+                  <Button color="inherit" onClick={() => setView('users')}>
+                    Usuários
+                  </Button>
+                  <Button color="inherit" onClick={() => setView('categories')}>
+                    Categorias
+                  </Button>
+                </>
+              )}
+              <Button color="inherit" onClick={handleLogout}>Logout</Button>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-        {!user ?
-          (view === 'login'
+        {!user ? (
+          view === 'login'
             ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
             : <Register showLogin={() => setView('login')} />
-          )
-          : <>
+        ) : (
+          <>
             {view === 'atendimentos' && (
               <Box display="flex" flexDirection="column" gap={4}>
                 <Box display="flex" justifyContent="center">
@@ -130,7 +149,9 @@ export default function App() {
                   />
                 </Box>
                 <Paper elevation={3} sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom>Atendimentos</Typography>
+                  <Typography variant="h6" gutterBottom>
+                    Atendimentos
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                     <TextField
                       label="Data do Relatório"
@@ -153,7 +174,8 @@ export default function App() {
             )}
             {view === 'users' && user.sector === 'DEV' && <UserManagement token={token} />}
             {view === 'categories' && user.sector === 'DEV' && <CategoryManagement token={token} />}
-          </>}
+          </>
+        )}
       </Container>
     </ThemeProvider>
   );

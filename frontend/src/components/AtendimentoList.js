@@ -31,8 +31,8 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
         <IconButton onClick={() => handleDelete(params.row.id)}>
           <DeleteIcon color="error" />
         </IconButton>
-      ),
-    },
+      )
+    }
   ];
 
   return (

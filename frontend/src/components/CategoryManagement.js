@@ -21,18 +21,18 @@ export default function CategoryManagement({ token }) {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
         })
-            .then(res => res.json())
+            .then(r => r.json())
             .then(obj => setData(obj[tab]))
             .catch(console.error);
     };
     useEffect(fetchData, [tab]);
 
     const handleChangeTab = (_, newVal) => setTab(newVal);
-    const handleAdd = () => setCurrent({ oldValue: '', value: '' }) || setOpen(true);
-    const handleEdit = val => setCurrent({ oldValue: val, value: val }) || setOpen(true);
-    const handleDelete = val => {
+    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
+    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
+    const handleDelete = v => {
         if (!window.confirm('Confirma exclusão?')) return;
-        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(val)}`, {
+        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
             method: 'DELETE',
             headers: { Authorization: 'Bearer ' + token }
         }).then(fetchData);
@@ -44,7 +44,6 @@ export default function CategoryManagement({ token }) {
             ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
             : `${API_URL}/api/categories/${tab}`;
         const method = isEdit ? 'PUT' : 'POST';
-
         fetch(url, {
             method,
             headers: {
@@ -52,11 +51,10 @@ export default function CategoryManagement({ token }) {
                 Authorization: 'Bearer ' + token
             },
             body: JSON.stringify({ value: current.value })
-        })
-            .then(() => {
-                setOpen(false);
-                fetchData();
-            });
+        }).then(() => {
+            setOpen(false);
+            fetchData();
+        });
     };
 
     const columns = [
@@ -75,8 +73,8 @@ export default function CategoryManagement({ token }) {
                         <DeleteIcon color="error" />
                     </IconButton>
                 </>
-            ),
-        },
+            )
+        }
     ];
 
     return (
@@ -103,14 +101,14 @@ export default function CategoryManagement({ token }) {
 
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'}{' '}
-                    {tab.charAt(0).toUpperCase() + tab.slice(1, -1)}
+                    {current.oldValue ? 'Editar' : 'Adicionar'}
+                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
                 </DialogTitle>
                 <DialogContent sx={{ mt: 1 }}>
                     <TextField
                         label="Valor"
                         value={current.value}
-                        onChange={e => setCurrent(prev => ({ ...prev, value: e.target.value }))}
+                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
                         fullWidth
                     />
                 </DialogContent>

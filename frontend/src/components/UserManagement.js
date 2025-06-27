@@ -19,18 +19,14 @@ export default function UserManagement({ token }) {
         fetch(`${API_URL}/api/users`, {
             headers: { Authorization: 'Bearer ' + token }
         })
-            .then(res => res.json())
+            .then(r => r.json())
             .then(setUsers)
             .catch(console.error);
     };
     useEffect(fetchUsers, []);
 
-    const handleEdit = user => {
-        setCurrent({ username: user.username, sector: user.sector, password: '' });
-        setOpen(true);
-    };
+    const handleEdit = u => { setCurrent({ username: u.username, sector: u.sector, password: '' }); setOpen(true); };
     const handleClose = () => setOpen(false);
-
     const handleSave = () => {
         fetch(`${API_URL}/api/users/${current.username}`, {
             method: 'PUT',
@@ -38,20 +34,11 @@ export default function UserManagement({ token }) {
                 'Content-Type': 'application/json',
                 Authorization: 'Bearer ' + token
             },
-            body: JSON.stringify({
-                sector: current.sector,
-                password: current.password || undefined
-            })
+            body: JSON.stringify({ sector: current.sector, password: current.password || undefined })
         })
-            .then(res => {
-                if (!res.ok) throw new Error();
-                return res.json();
-            })
-            .then(() => {
-                fetchUsers();
-                setOpen(false);
-            })
-            .catch(() => alert('Falha ao salvar usuário'));
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(() => { fetchUsers(); setOpen(false); })
+            .catch(() => alert('Erro ao salvar usuário'));
     };
 
     const columns = [
@@ -66,8 +53,8 @@ export default function UserManagement({ token }) {
                 <IconButton onClick={() => handleEdit(params.row)}>
                     <EditIcon />
                 </IconButton>
-            ),
-        },
+            )
+        }
     ];
 
     return (
@@ -77,7 +64,7 @@ export default function UserManagement({ token }) {
                 <DataGrid
                     rows={users}
                     columns={columns}
-                    getRowId={row => row.username}
+                    getRowId={r => r.username}
                     pageSize={5}
                     rowsPerPageOptions={[5]}
                 />
@@ -93,7 +80,7 @@ export default function UserManagement({ token }) {
                             labelId="sector-label"
                             value={current.sector}
                             label="Setor"
-                            onChange={e => setCurrent(prev => ({ ...prev, sector: e.target.value }))}
+                            onChange={e => setCurrent(p => ({ ...p, sector: e.target.value }))}
                         >
                             <MenuItem value="DEV">DEV</MenuItem>
                             <MenuItem value="SAF">SAF</MenuItem>
@@ -103,7 +90,7 @@ export default function UserManagement({ token }) {
                         label="Nova senha"
                         type="password"
                         value={current.password}
-                        onChange={e => setCurrent(prev => ({ ...prev, password: e.target.value }))}
+                        onChange={e => setCurrent(p => ({ ...p, password: e.target.value }))}
                         fullWidth
                     />
                 </DialogContent>

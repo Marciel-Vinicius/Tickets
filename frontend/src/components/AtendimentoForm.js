@@ -16,14 +16,14 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
     contato: '',
     ocorrencia: ''
   });
-  const [options, setOptions] = useState({ lojas: [], contatos: [], ocorrencias: [] });
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(res => res.json())
-      .then(data => setOptions({
+      .then(r => r.json())
+      .then(data => setOpts({
         lojas: data.lojas,
         contatos: data.contatos,
         ocorrencias: data.ocorrencias
@@ -35,7 +35,6 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
-
   const handleSubmit = e => {
     e.preventDefault();
     fetch(`${API_URL}/api/atendimentos`, {
@@ -57,52 +56,57 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       <Box component="form" onSubmit={handleSubmit} sx={{ display: 'grid', gap: 2 }}>
         <TextField label="Atendente" value={atendente} fullWidth disabled />
         <TextField
-          label="Data" name="dia" type="date" value={form.dia}
-          onChange={handleChange} InputLabelProps={{ shrink: true }} fullWidth
+          label="Data" name="dia" type="date"
+          value={form.dia} onChange={handleChange}
+          InputLabelProps={{ shrink: true }} fullWidth
         />
         <TextField
-          label="Hora de Início" name="horaInicio" type="time"
+          label="Hora Início" name="horaInicio" type="time"
           value={form.horaInicio} onChange={handleChange}
           InputLabelProps={{ shrink: true }} fullWidth
         />
         <TextField
-          label="Hora de Término" name="horaFim" type="time"
+          label="Hora Término" name="horaFim" type="time"
           value={form.horaFim} onChange={handleChange}
           InputLabelProps={{ shrink: true }} fullWidth
         />
+
         <FormControl fullWidth>
           <InputLabel id="loja-label">Loja</InputLabel>
           <Select
             labelId="loja-label" name="loja" value={form.loja}
             label="Loja" onChange={handleChange}
           >
-            {options.lojas.map(loja => (
+            {opts.lojas.map(loja => (
               <MenuItem key={loja} value={loja}>{loja}</MenuItem>
             ))}
           </Select>
         </FormControl>
+
         <FormControl fullWidth>
           <InputLabel id="contato-label">Contato</InputLabel>
           <Select
             labelId="contato-label" name="contato" value={form.contato}
             label="Contato" onChange={handleChange}
           >
-            {options.contatos.map(contato => (
+            {opts.contatos.map(contato => (
               <MenuItem key={contato} value={contato}>{contato}</MenuItem>
             ))}
           </Select>
         </FormControl>
+
         <FormControl fullWidth>
           <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
           <Select
             labelId="ocorrencia-label" name="ocorrencia" value={form.ocorrencia}
             label="Ocorrência" onChange={handleChange}
           >
-            {options.ocorrencias.map(o => (
+            {opts.ocorrencias.map(o => (
               <MenuItem key={o} value={o}>{o}</MenuItem>
             ))}
           </Select>
         </FormControl>
+
         <Button type="submit" variant="contained">Cadastrar</Button>
       </Box>
     </Paper>
