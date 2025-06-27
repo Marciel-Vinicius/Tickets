@@ -12,10 +12,8 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// usa FRONTEND_URL do .env ou localhost
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-app.use(cors({ origin: FRONTEND_URL }));
-
+// Libera CORS para qualquer origem
+app.use(cors());
 app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
