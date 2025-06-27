@@ -6,7 +6,19 @@
       "sector": "DEV"
     }
   ],
-  "atendimentos": [],
+  "atendimentos": [
+    {
+      "id": "5c635105-2278-496d-ae35-0075500fa0a7",
+      "atendente": "marciel",
+      "setor": "DEV",
+      "dia": "2025-06-27",
+      "horaInicio": "15:50",
+      "horaFim": "15:55",
+      "loja": "",
+      "contato": "",
+      "ocorrencia": ""
+    }
+  ],
   "lojas": [],
   "contatos": [],
   "ocorrencias": []

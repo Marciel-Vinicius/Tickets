@@ -1,4 +1,6 @@
+// frontend/src/components/Register.js
 import React, { useState } from 'react';
+import API_URL from '../config';
 import {
   Box, Card, CardContent, TextField,
   Button, Typography, FormControl,
@@ -13,7 +15,7 @@ export default function Register({ showLogin }) {
 
   const handleSubmit = e => {
     e.preventDefault();
-    fetch('http://localhost:3001/api/auth/register', {
+    fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, sector })
@@ -33,15 +35,8 @@ export default function Register({ showLogin }) {
   return (
     <Card sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
       <CardContent>
-        <Typography variant="h5" gutterBottom>
-          Registrar
-        </Typography>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          noValidate
-          sx={{ display: 'grid', gap: 2 }}
-        >
+        <Typography variant="h5" gutterBottom>Registrar</Typography>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'grid', gap: 2 }}>
           <TextField
             label="Usuário"
             value={username}
@@ -67,13 +62,9 @@ export default function Register({ showLogin }) {
               <MenuItem value="SAF">SAF</MenuItem>
             </Select>
           </FormControl>
-          <Button type="submit" variant="contained">
-            Registrar
-          </Button>
+          <Button type="submit" variant="contained">Registrar</Button>
           {message && <Typography color="error">{message}</Typography>}
-          <Button variant="text" onClick={showLogin}>
-            Voltar ao login
-          </Button>
+          <Button variant="text" onClick={showLogin}>Voltar ao login</Button>
         </Box>
       </CardContent>
     </Card>

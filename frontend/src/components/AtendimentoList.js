@@ -1,11 +1,13 @@
+// frontend/src/components/AtendimentoList.js
 import React from 'react';
+import API_URL from '../config';
 import { DataGrid } from '@mui/x-data-grid';
 import { IconButton, Box } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function AtendimentoList({ atendimentos, token, onDelete }) {
   const handleDelete = id => {
-    fetch(`http://localhost:3001/api/atendimentos/${id}`, {
+    fetch(`${API_URL}/api/atendimentos/${id}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + token }
     }).then(onDelete);
@@ -29,8 +31,8 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
         <IconButton onClick={() => handleDelete(params.row.id)}>
           <DeleteIcon color="error" />
         </IconButton>
-      )
-    }
+      ),
+    },
   ];
 
   return (

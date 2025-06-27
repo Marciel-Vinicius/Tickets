@@ -1,4 +1,6 @@
+// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
+import API_URL from '../config';
 import {
     Box, Typography, Tabs, Tab,
     Button, Dialog, DialogTitle,
@@ -16,39 +18,33 @@ export default function CategoryManagement({ token }) {
     const [current, setCurrent] = useState({ oldValue: '', value: '' });
 
     const fetchData = () => {
-        fetch(`http://localhost:3001/api/categories`, {
+        fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
         })
             .then(res => res.json())
             .then(obj => setData(obj[tab]))
             .catch(console.error);
     };
-
     useEffect(fetchData, [tab]);
 
     const handleChangeTab = (_, newVal) => setTab(newVal);
-
-    const handleAdd = () => {
-        setCurrent({ oldValue: '', value: '' });
-        setOpen(true);
-    };
-    const handleEdit = val => {
-        setCurrent({ oldValue: val, value: val });
-        setOpen(true);
-    };
+    const handleAdd = () => setCurrent({ oldValue: '', value: '' }) || setOpen(true);
+    const handleEdit = val => setCurrent({ oldValue: val, value: val }) || setOpen(true);
     const handleDelete = val => {
         if (!window.confirm('Confirma exclusão?')) return;
-        fetch(`http://localhost:3001/api/categories/${tab}/${encodeURIComponent(val)}`, {
+        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(val)}`, {
             method: 'DELETE',
             headers: { Authorization: 'Bearer ' + token }
         }).then(fetchData);
     };
 
     const handleSave = () => {
-        const url = current.oldValue
-            ? `http://localhost:3001/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
-            : `http://localhost:3001/api/categories/${tab}`;
-        const method = current.oldValue ? 'PUT' : 'POST';
+        const isEdit = Boolean(current.oldValue);
+        const url = isEdit
+            ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
+            : `${API_URL}/api/categories/${tab}`;
+        const method = isEdit ? 'PUT' : 'POST';
+
         fetch(url, {
             method,
             headers: {
@@ -56,10 +52,11 @@ export default function CategoryManagement({ token }) {
                 Authorization: 'Bearer ' + token
             },
             body: JSON.stringify({ value: current.value })
-        }).then(() => {
-            setOpen(false);
-            fetchData();
-        });
+        })
+            .then(() => {
+                setOpen(false);
+                fetchData();
+            });
     };
 
     const columns = [
@@ -78,15 +75,13 @@ export default function CategoryManagement({ token }) {
                         <DeleteIcon color="error" />
                     </IconButton>
                 </>
-            )
-        }
+            ),
+        },
     ];
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>
-                Gerenciar Categorias
-            </Typography>
+            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
             <Tabs value={tab} onChange={handleChangeTab}>
                 <Tab label="Lojas" value="lojas" />
                 <Tab label="Contatos" value="contatos" />
@@ -94,9 +89,7 @@ export default function CategoryManagement({ token }) {
             </Tabs>
 
             <Box sx={{ mt: 2, mb: 2 }}>
-                <Button variant="contained" onClick={handleAdd}>
-                    Adicionar
-                </Button>
+                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
             </Box>
 
             <div style={{ height: 400, width: '100%' }}>
@@ -123,9 +116,7 @@ export default function CategoryManagement({ token }) {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">
-                        Salvar
-                    </Button>
+                    <Button onClick={handleSave} variant="contained">Salvar</Button>
                 </DialogActions>
             </Dialog>
         </Box>

@@ -1,4 +1,6 @@
+// frontend/src/components/UserManagement.js
 import React, { useState, useEffect } from 'react';
+import API_URL from '../config';
 import {
     Box, Typography, IconButton,
     Dialog, DialogTitle, DialogContent,
@@ -14,14 +16,13 @@ export default function UserManagement({ token }) {
     const [current, setCurrent] = useState({ username: '', sector: '', password: '' });
 
     const fetchUsers = () => {
-        fetch('http://localhost:3001/api/users', {
+        fetch(`${API_URL}/api/users`, {
             headers: { Authorization: 'Bearer ' + token }
         })
             .then(res => res.json())
             .then(setUsers)
             .catch(console.error);
     };
-
     useEffect(fetchUsers, []);
 
     const handleEdit = user => {
@@ -31,7 +32,7 @@ export default function UserManagement({ token }) {
     const handleClose = () => setOpen(false);
 
     const handleSave = () => {
-        fetch(`http://localhost:3001/api/users/${current.username}`, {
+        fetch(`${API_URL}/api/users/${current.username}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -42,7 +43,10 @@ export default function UserManagement({ token }) {
                 password: current.password || undefined
             })
         })
-            .then(res => (res.ok ? res.json() : Promise.reject()))
+            .then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
             .then(() => {
                 fetchUsers();
                 setOpen(false);
@@ -62,15 +66,13 @@ export default function UserManagement({ token }) {
                 <IconButton onClick={() => handleEdit(params.row)}>
                     <EditIcon />
                 </IconButton>
-            )
-        }
+            ),
+        },
     ];
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>
-                Gerenciar Usuários
-            </Typography>
+            <Typography variant="h5" gutterBottom>Gerenciar Usuários</Typography>
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={users}
@@ -107,9 +109,7 @@ export default function UserManagement({ token }) {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">
-                        Salvar
-                    </Button>
+                    <Button onClick={handleSave} variant="contained">Salvar</Button>
                 </DialogActions>
             </Dialog>
         </Box>
