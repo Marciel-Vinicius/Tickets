@@ -1,5 +1,11 @@
 {
-  "users": [],
+  "users": [
+    {
+      "username": "marciel",
+      "password": "$2a$08$Wt5nY7OTWPV1gmgivttFKu8/nQIePr/GRSSlyIUV7ureOsM/r.3uG",
+      "sector": "DEV"
+    }
+  ],
   "atendimentos": [],
   "lojas": [],
   "contatos": [],
