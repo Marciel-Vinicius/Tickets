@@ -12,22 +12,21 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// 1) Configura o CORS *antes* das rotas
-app.use(cors({
-    origin: 'https://tickets-frontend-kvf1.onrender.com', // ou use '*' para qualquer origem
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// 1) Habilita CORS globalmente para todas as rotas e origens
+app.use(cors());
 
-// 2) Body parser
+// 2) Responde a OPTIONS para todas as rotas (preflight)
+app.options('*', cors());
+
+// 3) Body parser
 app.use(bodyParser.json());
 
-// 3) Rotas
+// 4) Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/atendimentos', authenticateToken, atendRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/categories', authenticateToken, categoryRoutes);
 
-// 4) Inicia o servidor
+// 5) Inicia o servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Backend rodando na porta ${PORT}`));
