@@ -12,21 +12,19 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// 1) Habilita CORS globalmente para todas as rotas e origens
+// 1) Habilita CORS globalmente (todas origens, todos métodos)
 app.use(cors());
-
-// 2) Responde a OPTIONS para todas as rotas (preflight)
 app.options('*', cors());
 
-// 3) Body parser
+// 2) Body parser
 app.use(bodyParser.json());
 
-// 4) Rotas
+// 3) Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/atendimentos', authenticateToken, atendRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/categories', authenticateToken, categoryRoutes);
 
-// 5) Inicia o servidor
+// 4) Start
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Backend rodando na porta ${PORT}`));
