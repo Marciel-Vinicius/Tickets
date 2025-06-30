@@ -11,13 +11,23 @@ const categoryRoutes = require('./routes/categories');
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
-app.use(cors());               // libera CORS
+
+// 1) Configura o CORS *antes* das rotas
+app.use(cors({
+    origin: 'https://tickets-frontend-kvf1.onrender.com', // ou use '*' para qualquer origem
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 2) Body parser
 app.use(bodyParser.json());
 
+// 3) Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/atendimentos', authenticateToken, atendRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/categories', authenticateToken, categoryRoutes);
 
+// 4) Inicia o servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Backend rodando na porta ${PORT}`));
