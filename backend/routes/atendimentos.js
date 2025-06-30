@@ -1,156 +1,116 @@
 // backend/routes/atendimentos.js
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const PDFDocument = require('pdfkit');
+const { query } = require('../db');
 const router = express.Router();
-const dbFile = path.join(__dirname, '..', 'db.json');
 
-function readDB() {
-  return JSON.parse(fs.readFileSync(dbFile));
-}
-function writeDB(db) {
-  fs.writeFileSync(dbFile, JSON.stringify(db, null, 2));
-}
-
-// Helper para capitalizar nome
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-// -- Listar --
-router.get('/', (req, res) => {
-  const db = readDB();
-  res.json(db.atendimentos);
+// Listar
+router.get('/', async (req, res) => {
+  const { rows } = await query(
+    'SELECT * FROM atendimentos ORDER BY dia DESC, hora_inicio DESC',
+    []
+  );
+  res.json(rows);
 });
 
-// -- Criar --
-router.post('/', (req, res) => {
-  const db = readDB();
-  const {
-    atendente, dia, horaInicio, horaFim,
-    loja, contato, ocorrencia
-  } = req.body;
+// Criar
+router.post('/', async (req, res) => {
+  const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
   const setor = req.user.sector;
-  const atendimento = {
-    id: uuidv4(),
-    atendente,
-    setor,
-    dia,
-    horaInicio,
-    horaFim,
-    loja,
-    contato,
-    ocorrencia
-  };
-  db.atendimentos.push(atendimento);
-  writeDB(db);
-  res.status(201).json(atendimento);
+  const id = uuidv4();
+
+  await query(
+    `INSERT INTO atendimentos(
+       id, atendente, setor, dia, hora_inicio, hora_fim,
+       loja, contato, ocorrencia
+     ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [id, atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia]
+  );
+
+  res.status(201).json({ id, atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia });
 });
 
-// -- Atualizar --
-router.put('/:id', (req, res) => {
-  const db = readDB();
-  const idx = db.atendimentos.findIndex(a => a.id === req.params.id);
-  if (idx === -1) return res.sendStatus(404);
-  const {
-    atendente, dia, horaInicio, horaFim,
-    loja, contato, ocorrencia
-  } = req.body;
-  db.atendimentos[idx] = {
-    id: req.params.id,
-    atendente,
-    setor: req.user.sector,
-    dia,
-    horaInicio,
-    horaFim,
-    loja,
-    contato,
-    ocorrencia
-  };
-  writeDB(db);
-  res.json(db.atendimentos[idx]);
+// Atualizar
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
+  const setor = req.user.sector;
+
+  const result = await query('UPDATE atendimentos SET \
+    atendente=$1, setor=$2, dia=$3, hora_inicio=$4, hora_fim=$5, \
+    loja=$6, contato=$7, ocorrencia=$8 \
+    WHERE id=$9 RETURNING *',
+    [atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
+  );
+
+  if (result.rowCount === 0) return res.sendStatus(404);
+  res.json(result.rows[0]);
 });
 
-// -- Deletar --
-router.delete('/:id', (req, res) => {
-  const db = readDB();
-  db.atendimentos = db.atendimentos.filter(a => a.id !== req.params.id);
-  writeDB(db);
+// Deletar
+router.delete('/:id', async (req, res) => {
+  await query('DELETE FROM atendimentos WHERE id=$1', [req.params.id]);
   res.sendStatus(204);
 });
 
-// -- Gerar relatório em PDF para qualquer data --
-router.get('/report', (req, res) => {
+// Relatório PDF
+router.get('/report', async (req, res) => {
   const { date } = req.query;
-  if (!date) {
-    return res.status(400).json({ message: 'Parâmetro "date" é obrigatório' });
-  }
+  if (!date) return res.status(400).json({ message: 'Parâmetro "date" é obrigatório' });
 
-  const db = readDB();
-  const items = db.atendimentos.filter(a => a.dia === date);
+  const { rows: items } = await query(
+    'SELECT * FROM atendimentos WHERE dia=$1 ORDER BY hora_inicio',
+    [date]
+  );
 
-  // Inicia PDF
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename="plantao-${date}.pdf"`
-  );
+  res.setHeader('Content-Disposition', `attachment; filename="plantao-${date}.pdf"`);
   doc.pipe(res);
 
   // Cabeçalho
   doc.font('Helvetica-Bold').fontSize(14)
-    .text(`PLANTONISTA: ${capitalize(req.user.username)}`);
+    .text(`PLANTONISTA: ${req.user.username}`);
   doc.moveDown(0.5);
-
-  // Formata data para DD/MM/YYYY
-  const [year, month, day] = date.split('-');
-  const formattedDate = `${day}/${month}/${year}`;
+  const [y, m, d] = date.split('-');
   doc.font('Helvetica').fontSize(12)
-    .text(`Data do Relatório: ${formattedDate}`);
+    .text(`Data: ${d}/${m}/${y}`);
   doc.moveDown();
 
-  // Título da tabela
-  const tableTop = doc.y;
+  // Título
+  const top = doc.y;
   doc.font('Helvetica-Bold').fontSize(10)
-    .text('HORA INÍCIO', 50, tableTop)
-    .text('LOJA', 130, tableTop)
-    .text('CONTATO', 260, tableTop)
-    .text('OCORRÊNCIA', 380, tableTop)
-    .text('HORA FIM', 500, tableTop);
+    .text('H.Início', 50, top)
+    .text('Loja', 130, top)
+    .text('Contato', 260, top)
+    .text('Ocorrência', 380, top)
+    .text('H.Fim', 500, top);
+  doc.moveDown(0.5);
+  doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
   doc.moveDown(0.5);
 
-  // Linha sob o cabeçalho
-  const lineY = doc.y;
-  doc.moveTo(50, lineY).lineTo(550, lineY).stroke();
-  doc.moveDown(0.5);
-
-  // Linhas de dados
+  // Linhas
   doc.font('Helvetica').fontSize(10);
-  items.forEach(item => {
+  items.forEach(i => {
     const rowY = doc.y;
-    doc.text(item.horaInicio, 50, rowY)
-      .text(item.loja, 130, rowY)
-      .text(item.contato, 260, rowY)
-      .text(item.ocorrencia, 380, rowY)
-      .text(item.horaFim, 500, rowY);
+    doc.text(i.hora_inicio, 50, rowY)
+      .text(i.loja, 130, rowY)
+      .text(i.contato, 260, rowY)
+      .text(i.ocorrencia, 380, rowY)
+      .text(i.hora_fim, 500, rowY);
     doc.moveDown(0.5);
   });
 
-  // Assinaturas no rodapé, linhas iguais
+  // Assinaturas
   const footerY = doc.page.height - doc.page.margins.bottom - 50;
-  const lineWidth = 210;
   const labelY = footerY - 15;
-
+  const lineW = 210;
   doc.font('Helvetica').fontSize(12);
-  // Plantonista
   doc.text('Ass. Plantonista', 50, labelY);
-  doc.moveTo(50, footerY).lineTo(50 + lineWidth, footerY).stroke();
-  // Supervisor
+  doc.moveTo(50, footerY).lineTo(50 + lineW, footerY).stroke();
   doc.text('Ass. Supervisor', 350, labelY);
-  doc.moveTo(350, footerY).lineTo(350 + lineWidth, footerY).stroke();
+  doc.moveTo(350, footerY).lineTo(350 + lineW, footerY).stroke();
 
   doc.end();
 });

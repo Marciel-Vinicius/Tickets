@@ -1,38 +1,34 @@
+// backend/routes/users.js
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const bcrypt = require('bcryptjs');
 const { authorizeSector } = require('../middleware/auth');
+const { query } = require('../db');
+
 const router = express.Router();
-const dbFile = path.join(__dirname, '..', 'db.json');
-
-function readDB() {
-    return JSON.parse(fs.readFileSync(dbFile));
-}
-function writeDB(db) {
-    fs.writeFileSync(dbFile, JSON.stringify(db, null, 2));
-}
-
 router.use(authorizeSector('DEV'));
 
-// Listar usuários (sem senha)
-router.get('/', (req, res) => {
-    const db = readDB();
-    const users = db.users.map(u => ({ username: u.username, sector: u.sector }));
-    res.json(users);
+// Listar
+router.get('/', async (req, res) => {
+    const { rows } = await query('SELECT username, sector FROM users', []);
+    res.json(rows);
 });
 
 // Atualizar setor e/ou senha
-router.put('/:username', (req, res) => {
+router.put('/:username', async (req, res) => {
     const { username } = req.params;
     const { sector, password } = req.body;
-    const db = readDB();
-    const user = db.users.find(u => u.username === username);
-    if (!user) return res.sendStatus(404);
-    if (sector) user.sector = sector;
-    if (password) user.password = bcrypt.hashSync(password, 8);
-    writeDB(db);
-    res.json({ username: user.username, sector: user.sector });
+
+    if (sector) {
+        await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
+    }
+    if (password) {
+        const hash = bcrypt.hashSync(password, 8);
+        await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
+    }
+
+    const { rows } = await query('SELECT username, sector FROM users WHERE username=$1', [username]);
+    if (rows.length === 0) return res.sendStatus(404);
+    res.json(rows[0]);
 });
 
 module.exports = router;

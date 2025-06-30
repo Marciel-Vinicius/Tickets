@@ -11,9 +11,7 @@ const categoryRoutes = require('./routes/categories');
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
-
-// Libera CORS para qualquer origem
-app.use(cors());
+app.use(cors());               // libera CORS
 app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
