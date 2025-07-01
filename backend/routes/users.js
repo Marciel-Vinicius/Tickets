@@ -1,34 +1,58 @@
-// backend/routes/users.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { authorizeSector } = require('../middleware/auth');
-const { query } = require('../db');
+const pool = require('../db');
 
 const router = express.Router();
-router.use(authorizeSector('DEV'));
 
-// Listar
+// GET /api/users
 router.get('/', async (req, res) => {
-    const { rows } = await query('SELECT username, sector FROM users', []);
-    res.json(rows);
+    const client = await pool.connect();
+    try {
+        const result = await client.query(
+            'SELECT id, username, sector FROM users ORDER BY id'
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Erro em GET /api/users:', err);
+        res.status(500).json({ error: 'internal_server_error' });
+    } finally {
+        client.release();
+    }
 });
 
-// Atualizar setor e/ou senha
-router.put('/:username', async (req, res) => {
-    const { username } = req.params;
-    const { sector, password } = req.body;
-
-    if (sector) {
-        await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
+// PUT /api/users/:id
+router.put('/:id', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { id } = req.params;
+        const { password, sector } = req.body;
+        const hash = await bcrypt.hash(password, 10);
+        await client.query(
+            'UPDATE users SET password = $1, sector = $2 WHERE id = $3',
+            [hash, sector, id]
+        );
+        res.json({ message: 'Usuário atualizado com sucesso' });
+    } catch (err) {
+        console.error('Erro em PUT /api/users/:id:', err);
+        res.status(500).json({ error: 'internal_server_error' });
+    } finally {
+        client.release();
     }
-    if (password) {
-        const hash = bcrypt.hashSync(password, 8);
-        await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
-    }
+});
 
-    const { rows } = await query('SELECT username, sector FROM users WHERE username=$1', [username]);
-    if (rows.length === 0) return res.sendStatus(404);
-    res.json(rows[0]);
+// DELETE /api/users/:id
+router.delete('/:id', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { id } = req.params;
+        await client.query('DELETE FROM users WHERE id = $1', [id]);
+        res.json({ message: 'Usuário excluído com sucesso' });
+    } catch (err) {
+        console.error('Erro em DELETE /api/users/:id:', err);
+        res.status(500).json({ error: 'internal_server_error' });
+    } finally {
+        client.release();
+    }
 });
 
 module.exports = router;

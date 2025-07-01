@@ -1,42 +1,58 @@
-// backend/routes/auth.js
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { query } = require('../db');
+const jwt = require('jsonwebtoken');
+const pool = require('../db');
 
 const router = express.Router();
-const SECRET = process.env.JWT_SECRET || 'MY_SECRET';
 
-router.post('/register', async (req, res) => {
-  const { username, password, sector } = req.body;
-  if (!username || !password || !sector)
-    return res.status(400).json({ message: 'Dados incompletos' });
-
-  const { rowCount } = await query('SELECT 1 FROM users WHERE username=$1', [username]);
-  if (rowCount > 0)
-    return res.status(400).json({ message: 'Usuário já existe' });
-
-  const hash = bcrypt.hashSync(password, 8);
-  await query('INSERT INTO users(username,password,sector) VALUES($1,$2,$3)', [
-    username, hash, sector
-  ]);
-
-  res.status(201).json({ message: 'Usuário criado com sucesso' });
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { username, password } = req.body;
+    const result = await client.query(
+      'SELECT id, username, password, sector FROM users WHERE username = $1',
+      [username]
+    );
+    if (result.rowCount === 0) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+    const user = result.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+    const token = jwt.sign(
+      { username: user.username, sector: user.sector },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+    res.json({ token });
+  } catch (err) {
+    console.error('Erro em /api/auth/login:', err);
+    res.status(500).json({ error: 'internal_server_error' });
+  } finally {
+    client.release();
+  }
 });
 
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const { rows } = await query('SELECT password, sector FROM users WHERE username=$1', [username]);
-  if (rows.length === 0 || !bcrypt.compareSync(password, rows[0].password)) {
-    return res.status(401).json({ message: 'Credenciais inválidas' });
+// POST /api/auth/register
+router.post('/register', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { username, password, sector } = req.body;
+    const hash = await bcrypt.hash(password, 10);
+    await client.query(
+      'INSERT INTO users (username, password, sector) VALUES ($1, $2, $3)',
+      [username, hash, sector]
+    );
+    res.status(201).json({ message: 'Usuário cadastrado com sucesso' });
+  } catch (err) {
+    console.error('Erro em /api/auth/register:', err);
+    res.status(500).json({ error: 'internal_server_error' });
+  } finally {
+    client.release();
   }
-
-  const token = jwt.sign(
-    { username, sector: rows[0].sector },
-    SECRET,
-    { expiresIn: '1h' }
-  );
-  res.json({ token });
 });
 
 module.exports = router;
