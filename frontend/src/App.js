@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline,
@@ -26,7 +25,7 @@ import AtendimentoList from './components/AtendimentoList';
 import UserManagement from './components/UserManagement';
 import CategoryManagement from './components/CategoryManagement';
 
-// Parsing seguro de JWT
+// secure JWT parse
 function parseJwt(token) {
   if (!token) return null;
   try {
@@ -45,7 +44,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Tema
+  // theme toggle
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -54,30 +53,45 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Autenticação
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  // token: load from localStorage or sessionStorage
+  const [token, setToken] = useState(
+    localStorage.getItem('token') || sessionStorage.getItem('token')
+  );
   const [user, setUser] = useState(null);
   const [view, setView] = useState('login');
 
   useEffect(() => {
     if (token) {
       setUser(parseJwt(token));
-      localStorage.setItem('token', token);
+      // save token in whichever storage was used
+      // actual storage done in handleLogin
       setView('atendimentos');
     } else {
       setUser(null);
-      localStorage.removeItem('token');
       setView('login');
     }
   }, [token]);
 
-  const handleLogin = t => setToken(t);
-  const handleLogout = () => setToken(null);
+  // login: receives (token, rememberMe)
+  const handleLogin = (t, remember) => {
+    if (remember) {
+      localStorage.setItem('token', t);
+      sessionStorage.removeItem('token');
+    } else {
+      sessionStorage.setItem('token', t);
+      localStorage.removeItem('token');
+    }
+    setToken(t);
+  };
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    setToken(null);
+  };
 
-  // Atendimentos e Observação 4º plantão
+  // atendimentos + compute 4th-Saturday note
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
-
   const fetchAtendimentos = () => {
     if (!token) return;
     fetch(`${API_URL}/api/atendimentos`, {
@@ -85,20 +99,20 @@ export default function App() {
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(data => {
-        // Ordena asc por data
-        const sorted = [...data].sort((a, b) => new Date(a.dia) - new Date(b.dia));
-        // Conta sábados por usuário
+        const sorted = [...data].sort(
+          (a, b) => new Date(a.dia) - new Date(b.dia)
+        );
         const saturdayCount = {};
         const processed = sorted.map(item => {
-          const userKey = item.atendente;
-          saturdayCount[userKey] = saturdayCount[userKey] || 0;
+          const u = item.atendente;
+          saturdayCount[u] = saturdayCount[u] || 0;
           const d = new Date(item.dia);
           let observacao = '';
           if (d.getDay() === 6) {
-            saturdayCount[userKey]++;
-            if (saturdayCount[userKey] === 4) {
+            saturdayCount[u]++;
+            if (saturdayCount[u] === 4) {
               observacao = '4 plantão';
-              saturdayCount[userKey] = 0;
+              saturdayCount[u] = 0;
             }
           }
           return { ...item, observacao };
@@ -107,20 +121,17 @@ export default function App() {
       })
       .catch(() => alert('Falha ao conectar ao servidor.'));
   };
-
   useEffect(() => {
     if (token) fetchAtendimentos();
   }, [token]);
 
-  // Geração de relatório em PDF
+  // report
   const generateReport = () => {
-    if (!reportDate) {
-      alert('Selecione uma data');
-      return;
-    }
-    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
+    if (!reportDate) return alert('Selecione uma data');
+    fetch(
+      `${API_URL}/api/atendimentos/report?date=${reportDate}`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    )
       .then(r => (r.ok ? r.blob() : Promise.reject()))
       .then(blob => {
         const url = URL.createObjectURL(blob);
@@ -137,8 +148,7 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
-      {/* Top Bar */}
-      <AppBar position="static">
+      <AppBar position="static" color="primary">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Sistema de Atendimentos
@@ -169,74 +179,81 @@ export default function App() {
         </Toolbar>
       </AppBar>
 
-      {/* Conteúdo */}
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        {!user ? (
-          view === 'login' ? (
+      {!user ? (
+        // centered full-screen login/register
+        <Box
+          sx={{
+            height: 'calc(100vh - 64px)',
+            bgcolor: 'background.default',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: 2
+          }}
+        >
+          {view === 'login' ? (
             <Login onLogin={handleLogin} showRegister={() => setView('register')} />
           ) : (
             <Register showLogin={() => setView('login')} />
-          )
-        ) : (
-          <>
-            {view === 'atendimentos' && (
-              <Grid container spacing={4}>
-                {/* Form */}
-                <Grid item xs={12} md={4}>
-                  <Paper elevation={3} sx={{ p: 3 }}>
-                    <AtendimentoForm
-                      onAdd={fetchAtendimentos}
-                      token={token}
-                      atendente={user.username}
-                    />
-                  </Paper>
-                </Grid>
-
-                {/* Lista + Relatório */}
-                <Grid item xs={12} md={8}>
-                  <Paper elevation={3} sx={{ p: 3 }}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        mb: 2
-                      }}
-                    >
-                      <Typography variant="h6">Atendimentos</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <TextField
-                          label="Data do Relatório"
-                          type="date"
-                          size="small"
-                          value={reportDate}
-                          onChange={e => setReportDate(e.target.value)}
-                          InputLabelProps={{ shrink: true }}
-                        />
-                        <Button variant="contained" onClick={generateReport}>
-                          Gerar Relatório
-                        </Button>
-                      </Box>
-                    </Box>
-                    <AtendimentoList
-                      atendimentos={atendimentos}
-                      token={token}
-                      onDelete={fetchAtendimentos}
-                    />
-                  </Paper>
-                </Grid>
+          )}
+        </Box>
+      ) : (
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+          {view === 'atendimentos' && (
+            <Grid container spacing={4}>
+              <Grid item xs={12} md={4}>
+                <Paper elevation={3} sx={{ p: 3 }}>
+                  <AtendimentoForm
+                    onAdd={fetchAtendimentos}
+                    token={token}
+                    atendente={user.username}
+                  />
+                </Paper>
               </Grid>
-            )}
-
-            {view === 'users' && user.sector === 'DEV' && (
-              <UserManagement token={token} />
-            )}
-            {view === 'categories' && user.sector === 'DEV' && (
-              <CategoryManagement token={token} />
-            )}
-          </>
-        )}
-      </Container>
+              <Grid item xs={12} md={8}>
+                <Paper elevation={3} sx={{ p: 3 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mb: 2,
+                      flexWrap: 'wrap',
+                      gap: 2
+                    }}
+                  >
+                    <Typography variant="h6">Atendimentos</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <TextField
+                        label="Data do Relatório"
+                        type="date"
+                        size="small"
+                        value={reportDate}
+                        onChange={e => setReportDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <Button variant="contained" onClick={generateReport}>
+                        Gerar Relatório
+                      </Button>
+                    </Box>
+                  </Box>
+                  <AtendimentoList
+                    atendimentos={atendimentos}
+                    token={token}
+                    onDelete={fetchAtendimentos}
+                  />
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+          {view === 'users' && user.sector === 'DEV' && (
+            <UserManagement token={token} />
+          )}
+          {view === 'categories' && user.sector === 'DEV' && (
+            <CategoryManagement token={token} />
+          )}
+        </Container>
+      )}
     </ThemeProvider>
   );
 }
