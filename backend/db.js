@@ -8,9 +8,9 @@ const pool = new Pool({
         rejectUnauthorized: false
     },
     max: 10,                   // até 10 conexões simultâneas
-    idleTimeoutMillis: 600000, // 600 000 ms = 10 minutos
-    connectionTimeoutMillis: 2000, // 2 s de timeout na criação de novas conexões
-    Promise: global.Promise    // garante que pool.Promise está definido
+    idleTimeoutMillis: 600000, // 600000 ms = 10 minutos
+    connectionTimeoutMillis: 2000, // 2s de timeout na criação de conexões
+    Promise: global.Promise    // garante que pool.Promise exista
 });
 
 module.exports = pool;
