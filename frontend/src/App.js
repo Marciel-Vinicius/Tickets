@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
@@ -45,7 +44,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Tema
+  // --- Tema ---
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -54,7 +53,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Auth
+  // --- Autenticação ---
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -89,40 +88,51 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos + relatório
+  // --- Atendimentos & 4º plantão ---
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
+
   const fetchAtendimentos = () => {
     if (!token) return;
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(data => {
-        const sorted = [...data].sort(
-          (a, b) => new Date(a.dia) - new Date(b.dia)
-        );
+      .then(raw => {
+        // 1) ordenar asc por dia
+        const sorted = [...raw].sort((a, b) => new Date(a.dia) - new Date(b.dia));
         const saturdayCount = {};
-        const proc = sorted.map(item => {
-          const u = item.atendente;
-          saturdayCount[u] = saturdayCount[u] || 0;
-          const d = new Date(item.dia);
-          let obs = '';
-          if (d.getDay() === 6) {
-            saturdayCount[u]++;
-            if (saturdayCount[u] === 4) {
-              obs = '4 plantão';
-              saturdayCount[u] = 0;
+        // 2) normalizar campos e computar 4º plantão
+        const processed = sorted.map(item => {
+          saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
+          let observacao = '';
+          if (new Date(item.dia).getDay() === 6) {
+            saturdayCount[item.atendente]++;
+            if (saturdayCount[item.atendente] === 4) {
+              observacao = '4 plantão';
+              saturdayCount[item.atendente] = 0;
             }
           }
-          return { ...item, observacao: obs };
+          return {
+            id: item.id,
+            atendente: item.atendente,
+            setor: item.setor,
+            dia: item.dia,           // ISO string "YYYY-MM-DD"
+            horaInicio: item.hora_inicio,   // snake_case do BD
+            horaFim: item.hora_fim,      // snake_case do BD
+            loja: item.loja,
+            contato: item.contato,
+            ocorrencia: item.ocorrencia,
+            observacao
+          };
         });
-        setAtendimentos(proc);
+        setAtendimentos(processed);
       })
       .catch(() => alert('Falha ao conectar ao servidor.'));
   };
   useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
+  // --- Geração de relatório ---
   const generateReport = () => {
     if (!reportDate) { alert('Selecione uma data'); return; }
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
@@ -140,7 +150,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Drawer content
+  // --- Conteúdo do Drawer ---
   const drawer = (
     <div>
       <Toolbar>
@@ -186,16 +196,14 @@ export default function App() {
     </div>
   );
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(o => !o);
-  };
+  const handleDrawerToggle = () => setMobileOpen(o => !o);
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
 
-        {/* AppBar ajustado */}
+        {/* AppBar */}
         <AppBar
           position="fixed"
           sx={{
@@ -274,11 +282,10 @@ export default function App() {
                 alignItems: 'center'
               }}
             >
-              {view === 'login' ? (
-                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-              ) : (
-                <Register showLogin={() => setView('login')} />
-              )}
+              {view === 'login'
+                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+                : <Register showLogin={() => setView('login')} />
+              }
             </Container>
           ) : (
             <>
@@ -293,6 +300,7 @@ export default function App() {
                       />
                     </Paper>
                   </Grid>
+
                   <Grid item xs={12} md={8}>
                     <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                       <Box
