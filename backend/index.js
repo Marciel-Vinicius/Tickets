@@ -9,6 +9,8 @@ const atendRoutes = require('./routes/atendimentos');
 const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
 const { authenticateToken } = require('./middleware/auth');
+const reportsRouter = require('./routes/reports');
+const { authenticate } = require('./middleware/auth'); // seu middleware de auth
 
 const app = express();
 
@@ -24,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/atendimentos', authenticateToken, atendRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/categories', authenticateToken, categoryRoutes);
+app.use('/api/reports', authenticate, reportsRouter);
 
 // 4) Start
 const PORT = process.env.PORT || 3001;

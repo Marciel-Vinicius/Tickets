@@ -1,3 +1,4 @@
+// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
@@ -11,6 +12,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import EventIcon from '@mui/icons-material/Event';
 import CategoryIcon from '@mui/icons-material/Category';
 import PeopleIcon from '@mui/icons-material/People';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { lightTheme, darkTheme } from './theme';
@@ -22,6 +24,7 @@ import AtendimentoForm from './components/AtendimentoForm';
 import AtendimentoList from './components/AtendimentoList';
 import UserManagement from './components/UserManagement';
 import CategoryManagement from './components/CategoryManagement';
+import ReportDashboard from './components/ReportDashboard';
 
 const drawerWidth = 240;
 
@@ -44,7 +47,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Tema
+  // tema
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -53,7 +56,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Autenticação
+  // auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -88,7 +91,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos + 4º plantão
+  // atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
 
@@ -97,23 +100,20 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(r => r.ok ? r.json() : Promise.reject())
       .then(raw => {
-        // Ordena por dia
         const sorted = [...raw].sort(
           (a, b) => new Date(a.dia) - new Date(b.dia)
         );
         const saturdayCount = {};
         const processed = sorted.map(item => {
-          // Garante string YYYY-MM-DD
-          const diaVal =
-            item.dia instanceof Date
-              ? item.dia.toISOString().split('T')[0]
-              : String(item.dia).split('T')[0];
+          // criar Date local a partir de "YYYY-MM-DD"
+          const [Y, M, D] = item.dia.split('-').map(n => parseInt(n, 10));
+          const dt = new Date(Y, M - 1, D);
 
           saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
           let observacao = '';
-          if (new Date(diaVal).getDay() === 6) {
+          if (dt.getDay() === 6) {
             saturdayCount[item.atendente]++;
             if (saturdayCount[item.atendente] === 4) {
               observacao = '4 plantão';
@@ -125,7 +125,7 @@ export default function App() {
             id: item.id,
             atendente: item.atendente,
             setor: item.setor,
-            dia: diaVal,
+            dia: item.dia,
             horaInicio: item.hora_inicio,
             horaFim: item.hora_fim,
             loja: item.loja,
@@ -141,19 +141,15 @@ export default function App() {
         alert('Falha ao carregar atendimentos.');
       });
   };
+  useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
-  useEffect(() => {
-    if (token) fetchAtendimentos();
-  }, [token]);
-
-  // Geração de relatório
+  // gerar relatório PDF
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
-    fetch(
-      `${API_URL}/api/atendimentos/report?date=${reportDate}`,
-      { headers: { Authorization: 'Bearer ' + token } }
-    )
-      .then(r => (r.ok ? r.blob() : Promise.reject()))
+    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => r.ok ? r.blob() : Promise.reject())
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -168,53 +164,45 @@ export default function App() {
   // Drawer
   const drawer = (
     <div>
-      <Toolbar>
-        <Typography variant="h6">Menu</Typography>
-      </Toolbar>
+      <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
       <Divider />
       <List>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'atendimentos'}
-            onClick={() => {
-              setView('atendimentos');
-              setMobileOpen(false);
-            }}
+            onClick={() => { setView('atendimentos'); setMobileOpen(false); }}
           >
-            <ListItemIcon>
-              <EventIcon />
-            </ListItemIcon>
+            <ListItemIcon><EventIcon /></ListItemIcon>
             <ListItemText primary="Atendimentos" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'categories'}
-            onClick={() => {
-              setView('categories');
-              setMobileOpen(false);
-            }}
+            onClick={() => { setView('categories'); setMobileOpen(false); }}
             disabled={!['DEV', 'SAF'].includes(user?.sector)}
           >
-            <ListItemIcon>
-              <CategoryIcon />
-            </ListItemIcon>
+            <ListItemIcon><CategoryIcon /></ListItemIcon>
             <ListItemText primary="Categorias" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'users'}
-            onClick={() => {
-              setView('users');
-              setMobileOpen(false);
-            }}
+            onClick={() => { setView('users'); setMobileOpen(false); }}
             disabled={user?.sector !== 'DEV'}
           >
-            <ListItemIcon>
-              <PeopleIcon />
-            </ListItemIcon>
+            <ListItemIcon><PeopleIcon /></ListItemIcon>
             <ListItemText primary="Usuários" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={view === 'reports'}
+            onClick={() => { setView('reports'); setMobileOpen(false); }}
+          >
+            <ListItemIcon><BarChartIcon /></ListItemIcon>
+            <ListItemText primary="Relatórios" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
@@ -233,7 +221,6 @@ export default function App() {
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
 
-        {/* AppBar */}
         <AppBar
           position="fixed"
           sx={{
@@ -262,7 +249,6 @@ export default function App() {
           </Toolbar>
         </AppBar>
 
-        {/* Drawer */}
         {user && (
           <>
             <Drawer
@@ -290,7 +276,6 @@ export default function App() {
           </>
         )}
 
-        {/* Conteúdo Principal */}
         <Box
           component="main"
           sx={{
@@ -312,14 +297,10 @@ export default function App() {
                 alignItems: 'center'
               }}
             >
-              {view === 'login' ? (
-                <Login
-                  onLogin={handleLogin}
-                  showRegister={() => setView('register')}
-                />
-              ) : (
-                <Register showLogin={() => setView('login')} />
-              )}
+              {view === 'login'
+                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+                : <Register showLogin={() => setView('login')} />
+              }
             </Container>
           ) : (
             <>
@@ -376,6 +357,11 @@ export default function App() {
               {view === 'users' && user.sector === 'DEV' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <UserManagement token={token} />
+                </Paper>
+              )}
+              {view === 'reports' && (
+                <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+                  <ReportDashboard token={token} />
                 </Paper>
               )}
             </>
