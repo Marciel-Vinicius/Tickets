@@ -1,3 +1,4 @@
+// frontend/src/components/AtendimentoList.js
 import React from 'react';
 import API_URL from '../config';
 import { DataGrid } from '@mui/x-data-grid';
@@ -21,7 +22,9 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       flex: 1,
       minWidth: 100,
       valueFormatter: params => {
-        const [y, m, d] = params.value.split('-');
+        const v = params.value;
+        if (!v) return '';             // protege contra undefined
+        const [y, m, d] = v.split('-');
         return `${d}/${m}/${y}`;
       }
     },
