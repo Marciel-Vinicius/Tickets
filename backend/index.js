@@ -1,33 +1,42 @@
 // backend/index.js
 require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 
-const authRoutes = require('./routes/auth');
-const atendRoutes = require('./routes/atendimentos');
-const userRoutes = require('./routes/users');
-const categoryRoutes = require('./routes/categories');
-const { authenticateToken } = require('./middleware/auth');
+// rotas existentes
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/users');
+const atendRouter = require('./routes/atendimentos');
+const categoryRouter = require('./routes/categories');
+
+// nova rota de relatórios
 const reportsRouter = require('./routes/reports');
-const { authenticate } = require('./middleware/auth'); // seu middleware de auth
+
+// middleware de autenticação — verifique se o nome bate com o que seu arquivo exporta
+// se o seu middleware chama-se verifyToken, troque abaixo para:
+//    const { verifyToken } = require('./middleware/auth');
+const { authenticate } = require('./middleware/auth');
 
 const app = express();
 
-// 1) Habilita CORS globalmente (todas origens, todos métodos)
+// middlewares globais
 app.use(cors());
-app.options('*', cors());
-
-// 2) Body parser
 app.use(bodyParser.json());
 
-// 3) Rotas
-app.use('/api/auth', authRoutes);
-app.use('/api/atendimentos', authenticateToken, atendRoutes);
-app.use('/api/users', authenticateToken, userRoutes);
-app.use('/api/categories', authenticateToken, categoryRoutes);
+// endpoints públicos
+app.use('/api/auth', authRouter);
+
+// endpoints protegidos
+app.use('/api/users', authenticate, userRouter);
+app.use('/api/categories', authenticate, categoryRouter);
+app.use('/api/atendimentos', authenticate, atendRouter);
+
+// **novo** endpoint de relatórios
 app.use('/api/reports', authenticate, reportsRouter);
 
-// 4) Start
+// inicialização
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Backend rodando na porta ${PORT}`));
+app.listen(PORT, () =>
+    console.log(`🚀 Backend rodando na porta ${PORT}`)
+);
