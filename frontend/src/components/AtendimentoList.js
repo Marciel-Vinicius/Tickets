@@ -1,4 +1,3 @@
-// frontend/src/components/AtendimentoList.js
 import React from 'react';
 import API_URL from '../config';
 import { DataGrid } from '@mui/x-data-grid';
@@ -15,19 +14,22 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
   const columns = [
     { field: 'atendente', headerName: 'Atendente', flex: 1, minWidth: 120 },
     { field: 'setor', headerName: 'Setor', flex: 1, minWidth: 100 },
+
+    // Coluna Data: usa renderCell para formatar, mas mantém o row.dia (ISO) para sort
     {
       field: 'dia',
       headerName: 'Data',
       flex: 1,
       minWidth: 100,
-      // valueFormatter usa apenas params.value, sem ever tocar em params.row
-      valueFormatter: ({ value }) => {
-        if (!value) return '';
-        const [y, m, d] = String(value).split('-');
-        return `${d}/${m}/${y}`;
-      },
-      sortable: true
+      sortable: true,
+      renderCell: params => {
+        const v = params.row.dia;         // valor bruto "YYYY-MM-DD"
+        if (!v) return '';
+        const [y, m, d] = String(v).split('-');
+        return <>{`${d}/${m}/${y}`}</>;
+      }
     },
+
     { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
     { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
     { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
@@ -40,6 +42,8 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       minWidth: 120,
       sortable: false
     },
+
+    // Ações
     {
       field: 'actions',
       headerName: 'Ações',
