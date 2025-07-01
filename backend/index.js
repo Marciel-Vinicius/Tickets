@@ -4,49 +4,47 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-// importa o pool de conexões (com idleTimeoutMillis ajustado em db.js)
 const pool = require('./db');
 
-// rotas
 const authRouter = require('./routes/auth');
 const userRouter = require('./routes/users');
 const atendRouter = require('./routes/atendimentos');
 const categoryRouter = require('./routes/categories');
 const reportsRouter = require('./routes/reports');
 
-// middleware de autenticação
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// URL do seu frontend
+// --- CONFIGURAÇÃO CORS GLOBAL ---
+// Use o FRONTEND_URL do seu deploy
 const FRONTEND_URL = 'https://tickets-frontend-kvf1.onrender.com';
 
-// Configuração de CORS
-app.use(cors({
+const corsOptions = {
     origin: FRONTEND_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-app.options('*', cors({
-    origin: FRONTEND_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false
+};
+// Aplica CORS a todas as rotas
+app.use(cors(corsOptions));
+// Garante que o preflight seja sempre respondido
+app.options('*', cors(corsOptions));
 
+// --- MIDDLEWARES DE PARSE ---
 app.use(bodyParser.json());
 
-// Rotas públicas
+// --- ROTAS PÚBLICAS ---
 app.use('/api/auth', authRouter);
 
-// Rotas protegidas
+// --- ROTAS PROTEGIDAS ---
 app.use('/api/users', authenticateToken, userRouter);
 app.use('/api/categories', authenticateToken, categoryRouter);
 app.use('/api/atendimentos', authenticateToken, atendRouter);
 app.use('/api/reports', authenticateToken, reportsRouter);
 
-// Inicia o servidor
+// --- START SERVER ---
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () =>
-    console.log(`🚀 Backend rodando na porta ${PORT}`)
-);
+app.listen(PORT, () => {
+    console.log(`🚀 Backend rodando na porta ${PORT}`);
+});
