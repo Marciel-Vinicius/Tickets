@@ -1,3 +1,4 @@
+// frontend/src/components/AtendimentoList.js
 import React from 'react';
 import API_URL from '../config';
 import { DataGrid } from '@mui/x-data-grid';
@@ -18,16 +19,18 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
     {
       field: 'dia',
       headerName: 'Data',
+      type: 'date',
       flex: 1,
-      minWidth: 100,
+      minWidth: 120,
       sortable: true,
-      renderCell: ({ row }) => {
-        const raw = row.dia;
-        if (!raw) return '';
-        // raw é "YYYY-MM-DD"
-        const [y, m, d] = String(raw).split('-');
-        return `${d}/${m}/${y}`;
-      }
+      // transforma a string ISO em Date para o grid
+      valueGetter: ({ row }) =>
+        row.dia ? new Date(row.dia) : null,
+      // formata a célula usando locale pt-BR
+      valueFormatter: ({ value }) =>
+        value instanceof Date
+          ? value.toLocaleDateString('pt-BR')
+          : ''
     },
 
     { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
@@ -61,7 +64,9 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
         disableSelectionOnClick
         autoHeight
         initialState={{
-          sorting: { sortModel: [{ field: 'dia', sort: 'asc' }] }
+          sorting: {
+            sortModel: [{ field: 'dia', sort: 'asc' }]
+          }
         }}
       />
     </Box>
