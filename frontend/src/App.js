@@ -44,7 +44,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // --- Tema ---
+  // Tema
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -53,7 +53,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // --- Autenticação ---
+  // Auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -88,7 +88,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // --- Atendimentos & 4º plantão ---
+  // Atendimentos & 4º plantão
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
 
@@ -97,12 +97,12 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(r => r.ok ? r.json() : Promise.reject())
       .then(raw => {
-        // 1) ordenar asc por dia
+        // Ordena por data
         const sorted = [...raw].sort((a, b) => new Date(a.dia) - new Date(b.dia));
+        // Conta sábados
         const saturdayCount = {};
-        // 2) normalizar campos e computar 4º plantão
         const processed = sorted.map(item => {
           saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
           let observacao = '';
@@ -114,12 +114,13 @@ export default function App() {
             }
           }
           return {
+            // Normalize para camelCase
             id: item.id,
             atendente: item.atendente,
             setor: item.setor,
-            dia: item.dia,           // ISO string "YYYY-MM-DD"
-            horaInicio: item.hora_inicio,   // snake_case do BD
-            horaFim: item.hora_fim,      // snake_case do BD
+            dia: item.dia,          // string "YYYY-MM-DD"
+            horaInicio: item.hora_inicio,  // string "HH:MM:SS"
+            horaFim: item.hora_fim,
             loja: item.loja,
             contato: item.contato,
             ocorrencia: item.ocorrencia,
@@ -132,13 +133,13 @@ export default function App() {
   };
   useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
-  // --- Geração de relatório ---
+  // Geração de relatório
   const generateReport = () => {
-    if (!reportDate) { alert('Selecione uma data'); return; }
+    if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.blob() : Promise.reject()))
+      .then(r => r.ok ? r.blob() : Promise.reject())
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -150,12 +151,10 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // --- Conteúdo do Drawer ---
+  // Drawer
   const drawer = (
     <div>
-      <Toolbar>
-        <Typography variant="h6">Navegação</Typography>
-      </Toolbar>
+      <Toolbar><Typography variant="h6">Navegação</Typography></Toolbar>
       <Divider />
       <List>
         <ListItem disablePadding>
@@ -294,13 +293,12 @@ export default function App() {
                   <Grid item xs={12} md={4}>
                     <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                       <AtendimentoForm
-                        onAdd={fetchAtendimentos}
                         token={token}
                         atendente={user.username}
+                        onAdd={fetchAtendimentos}
                       />
                     </Paper>
                   </Grid>
-
                   <Grid item xs={12} md={8}>
                     <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                       <Box
