@@ -21,23 +21,14 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       minWidth: 100,
       valueFormatter: ({ value }) => {
         if (!value) return '';
-        const [y, m, d] = String(value).split('-');
+        // value é "YYYY-MM-DD" → split para DD/MM/YYYY
+        const [y, m, d] = value.split('-');
         return `${d}/${m}/${y}`;
       },
       sortable: true
     },
-    {
-      field: 'horaInicio',
-      headerName: 'Início',
-      flex: 0.7,
-      minWidth: 100
-    },
-    {
-      field: 'horaFim',
-      headerName: 'Término',
-      flex: 0.7,
-      minWidth: 100
-    },
+    { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
+    { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
     { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
     { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
     { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },

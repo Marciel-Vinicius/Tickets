@@ -44,7 +44,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Tema
+  // Tema (light/dark)
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -53,7 +53,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Auth
+  // Auth & usuário
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -88,7 +88,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos & 4º plantão
+  // Atendimentos + 4º plantão
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
 
@@ -97,11 +97,16 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(r => {
+        if (!r.ok) throw new Error(`Status ${r.status}`);
+        return r.json();
+      })
       .then(raw => {
-        // Ordena por data
-        const sorted = [...raw].sort((a, b) => new Date(a.dia) - new Date(b.dia));
-        // Conta sábados
+        // 1) ordenar por data crescente
+        const sorted = [...raw].sort(
+          (a, b) => new Date(a.dia) - new Date(b.dia)
+        );
+        // 2) computar 4º plantão e normalizar campos
         const saturdayCount = {};
         const processed = sorted.map(item => {
           saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
@@ -114,12 +119,11 @@ export default function App() {
             }
           }
           return {
-            // Normalize para camelCase
             id: item.id,
             atendente: item.atendente,
             setor: item.setor,
-            dia: item.dia,          // string "YYYY-MM-DD"
-            horaInicio: item.hora_inicio,  // string "HH:MM:SS"
+            dia: item.dia,                // string "YYYY-MM-DD"
+            horaInicio: item.hora_inicio,        // snake_case do SELECT
             horaFim: item.hora_fim,
             loja: item.loja,
             contato: item.contato,
@@ -129,17 +133,27 @@ export default function App() {
         });
         setAtendimentos(processed);
       })
-      .catch(() => alert('Falha ao conectar ao servidor.'));
+      .catch(err => {
+        console.error(err);
+        alert('Falha ao carregar atendimentos.');
+      });
   };
-  useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
-  // Geração de relatório
+  useEffect(() => {
+    if (token) fetchAtendimentos();
+  }, [token]);
+
+  // Geração de PDF
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
-    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => r.ok ? r.blob() : Promise.reject())
+    fetch(
+      `${API_URL}/api/atendimentos/report?date=${reportDate}`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    )
+      .then(r => {
+        if (!r.ok) throw new Error();
+        return r.blob();
+      })
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -151,7 +165,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Drawer
+  // Drawer (menu lateral)
   const drawer = (
     <div>
       <Toolbar><Typography variant="h6">Navegação</Typography></Toolbar>
@@ -259,7 +273,7 @@ export default function App() {
           </>
         )}
 
-        {/* Conteúdo principal */}
+        {/* Conteúdo */}
         <Box
           component="main"
           sx={{
@@ -281,10 +295,11 @@ export default function App() {
                 alignItems: 'center'
               }}
             >
-              {view === 'login'
-                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-                : <Register showLogin={() => setView('login')} />
-              }
+              {view === 'login' ? (
+                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+              ) : (
+                <Register showLogin={() => setView('login')} />
+              )}
             </Container>
           ) : (
             <>
