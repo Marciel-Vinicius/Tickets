@@ -1,7 +1,17 @@
+// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
-  AppBar, Toolbar, Typography, IconButton, Button,
-  Container, Box, CssBaseline, TextField, Paper, Grid
+  CssBaseline,
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Button,
+  Container,
+  Box,
+  TextField,
+  Paper,
+  Grid
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -16,13 +26,58 @@ import AtendimentoList from './components/AtendimentoList';
 import UserManagement from './components/UserManagement';
 import CategoryManagement from './components/CategoryManagement';
 
-// parseJwt permanece igual...
+// Parsing seguro de JWT
+function parseJwt(token) {
+  if (!token) return null;
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
-  // tema / auth unchanged...
+  // Tema
+  const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
+  const theme = mode === 'light' ? lightTheme : darkTheme;
+  const toggleColorMode = () => {
+    const next = mode === 'light' ? 'dark' : 'light';
+    setMode(next);
+    localStorage.setItem('mode', next);
+  };
 
-  // atendimentos + observação de 4º plantão
+  // Autenticação
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('login');
+
+  useEffect(() => {
+    if (token) {
+      setUser(parseJwt(token));
+      localStorage.setItem('token', token);
+      setView('atendimentos');
+    } else {
+      setUser(null);
+      localStorage.removeItem('token');
+      setView('login');
+    }
+  }, [token]);
+
+  const handleLogin = t => setToken(t);
+  const handleLogout = () => setToken(null);
+
+  // Atendimentos e Observação 4º plantão
   const [atendimentos, setAtendimentos] = useState([]);
+  const [reportDate, setReportDate] = useState('');
+
   const fetchAtendimentos = () => {
     if (!token) return;
     fetch(`${API_URL}/api/atendimentos`, {
@@ -30,20 +85,20 @@ export default function App() {
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(data => {
-        // 1) ordenar asc por data
+        // Ordena asc por data
         const sorted = [...data].sort((a, b) => new Date(a.dia) - new Date(b.dia));
-        // 2) computar sábados
+        // Conta sábados por usuário
         const saturdayCount = {};
         const processed = sorted.map(item => {
-          const user = item.atendente;
-          if (!saturdayCount[user]) saturdayCount[user] = 0;
-          const dt = new Date(item.dia);
+          const userKey = item.atendente;
+          saturdayCount[userKey] = saturdayCount[userKey] || 0;
+          const d = new Date(item.dia);
           let observacao = '';
-          if (dt.getDay() === 6) {
-            saturdayCount[user]++;
-            if (saturdayCount[user] === 4) {
+          if (d.getDay() === 6) {
+            saturdayCount[userKey]++;
+            if (saturdayCount[userKey] === 4) {
               observacao = '4 plantão';
-              saturdayCount[user] = 0;
+              saturdayCount[userKey] = 0;
             }
           }
           return { ...item, observacao };
@@ -52,34 +107,92 @@ export default function App() {
       })
       .catch(() => alert('Falha ao conectar ao servidor.'));
   };
-  useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
-  // relatório, login, logout, tema, etc. permanecem iguais...
+  useEffect(() => {
+    if (token) fetchAtendimentos();
+  }, [token]);
+
+  // Geração de relatório em PDF
+  const generateReport = () => {
+    if (!reportDate) {
+      alert('Selecione uma data');
+      return;
+    }
+    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => (r.ok ? r.blob() : Promise.reject()))
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-${reportDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => alert('Erro ao gerar relatório'));
+  };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {/* Top Bar unchanged... */}
+
+      {/* Top Bar */}
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Sistema de Atendimentos
+          </Typography>
+          <IconButton color="inherit" onClick={toggleColorMode}>
+            {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
+          </IconButton>
+          {user && (
+            <>
+              <Button color="inherit" onClick={() => setView('atendimentos')}>
+                Atendimentos
+              </Button>
+              {user.sector === 'DEV' && (
+                <>
+                  <Button color="inherit" onClick={() => setView('users')}>
+                    Usuários
+                  </Button>
+                  <Button color="inherit" onClick={() => setView('categories')}>
+                    Categorias
+                  </Button>
+                </>
+              )}
+              <Button color="inherit" onClick={handleLogout}>
+                Logout
+              </Button>
+            </>
+          )}
+        </Toolbar>
+      </AppBar>
+
+      {/* Conteúdo */}
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         {!user ? (
-          view === 'login'
-            ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-            : <Register showLogin={() => setView('login')} />
+          view === 'login' ? (
+            <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+          ) : (
+            <Register showLogin={() => setView('login')} />
+          )
         ) : (
           <>
             {view === 'atendimentos' && (
               <Grid container spacing={4}>
+                {/* Form */}
                 <Grid item xs={12} md={4}>
                   <Paper elevation={3} sx={{ p: 3 }}>
                     <AtendimentoForm
-                      onAdd={() => {
-                        fetchAtendimentos();
-                      }}
+                      onAdd={fetchAtendimentos}
                       token={token}
                       atendente={user.username}
                     />
                   </Paper>
                 </Grid>
+
+                {/* Lista + Relatório */}
                 <Grid item xs={12} md={8}>
                   <Paper elevation={3} sx={{ p: 3 }}>
                     <Box
@@ -91,17 +204,19 @@ export default function App() {
                       }}
                     >
                       <Typography variant="h6">Atendimentos</Typography>
-                      <TextField
-                        label="Data do Relatório"
-                        type="date"
-                        value={reportDate}
-                        onChange={e => setReportDate(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        size="small"
-                      />
-                      <Button variant="contained" onClick={generateReport}>
-                        Gerar Relatório
-                      </Button>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <TextField
+                          label="Data do Relatório"
+                          type="date"
+                          size="small"
+                          value={reportDate}
+                          onChange={e => setReportDate(e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                        <Button variant="contained" onClick={generateReport}>
+                          Gerar Relatório
+                        </Button>
+                      </Box>
                     </Box>
                     <AtendimentoList
                       atendimentos={atendimentos}
@@ -112,6 +227,7 @@ export default function App() {
                 </Grid>
               </Grid>
             )}
+
             {view === 'users' && user.sector === 'DEV' && (
               <UserManagement token={token} />
             )}
