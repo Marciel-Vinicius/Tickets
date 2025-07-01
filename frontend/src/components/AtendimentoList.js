@@ -23,14 +23,18 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       flex: 1,
       minWidth: 120,
       sortable: true,
-      // transforma a string ISO em Date para o grid
-      valueGetter: ({ row }) =>
-        row.dia ? new Date(row.dia) : null,
-      // formata a célula usando locale pt-BR
-      valueFormatter: ({ value }) =>
-        value instanceof Date
-          ? value.toLocaleDateString('pt-BR')
-          : ''
+      // valueGetter agora é seguro contra params undefined
+      valueGetter: params => {
+        const raw = params?.row?.dia;
+        if (!raw) return null;
+        return new Date(raw);
+      },
+      // formatamos a data para pt-BR
+      valueFormatter: params => {
+        const value = params?.value;
+        if (!(value instanceof Date) || isNaN(value)) return '';
+        return value.toLocaleDateString('pt-BR');
+      }
     },
 
     { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
