@@ -10,7 +10,6 @@ const atendRouter = require('./routes/atendimentos');
 const categoryRouter = require('./routes/categories');
 const reportsRouter = require('./routes/reports');
 
-// Importa o middleware correto
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
@@ -18,10 +17,10 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Rotas públicas
+// Públicos
 app.use('/api/auth', authRouter);
 
-// Rotas protegidas
+// Protegidos
 app.use('/api/users', authenticateToken, userRouter);
 app.use('/api/categories', authenticateToken, categoryRouter);
 app.use('/api/atendimentos', authenticateToken, atendRouter);

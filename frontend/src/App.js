@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
@@ -47,7 +46,6 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // tema
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -56,7 +54,6 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -91,7 +88,6 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
 
@@ -107,10 +103,8 @@ export default function App() {
         );
         const saturdayCount = {};
         const processed = sorted.map(item => {
-          // criar Date local a partir de "YYYY-MM-DD"
           const [Y, M, D] = item.dia.split('-').map(n => parseInt(n, 10));
           const dt = new Date(Y, M - 1, D);
-
           saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
           let observacao = '';
           if (dt.getDay() === 6) {
@@ -120,7 +114,6 @@ export default function App() {
               saturdayCount[item.atendente] = 0;
             }
           }
-
           return {
             id: item.id,
             atendente: item.atendente,
@@ -143,7 +136,6 @@ export default function App() {
   };
   useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
-  // gerar relatório PDF
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
@@ -161,7 +153,6 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Drawer
   const drawer = (
     <div>
       <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>

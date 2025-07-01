@@ -15,18 +15,18 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
     { field: 'atendente', headerName: 'Atendente', flex: 1, minWidth: 120 },
     { field: 'setor', headerName: 'Setor', flex: 1, minWidth: 100 },
 
-    // Coluna Data: usa renderCell para formatar, mas mantém o row.dia (ISO) para sort
     {
       field: 'dia',
       headerName: 'Data',
       flex: 1,
       minWidth: 100,
       sortable: true,
-      renderCell: params => {
-        const v = params.row.dia;         // valor bruto "YYYY-MM-DD"
-        if (!v) return '';
-        const [y, m, d] = String(v).split('-');
-        return <>{`${d}/${m}/${y}`}</>;
+      renderCell: ({ row }) => {
+        const raw = row.dia;
+        if (!raw) return '';
+        // raw é "YYYY-MM-DD"
+        const [y, m, d] = String(raw).split('-');
+        return `${d}/${m}/${y}`;
       }
     },
 
@@ -35,15 +35,8 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
     { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
     { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
     { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },
-    {
-      field: 'observacao',
-      headerName: 'Observação',
-      flex: 1,
-      minWidth: 120,
-      sortable: false
-    },
+    { field: 'observacao', headerName: 'Observação', flex: 1, minWidth: 120, sortable: false },
 
-    // Ações
     {
       field: 'actions',
       headerName: 'Ações',
