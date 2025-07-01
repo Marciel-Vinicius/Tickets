@@ -1,20 +1,17 @@
-// src/db.js
+// backend/db.js
 require('dotenv').config();
+const { Pool } = require('pg');
 
-// primeiro, carregue o módulo inteiro para patchar o prototype
-const pg = require('pg');
+if (!process.env.DATABASE_URL) {
+    console.error('❌ ERROR: DATABASE_URL não definido no .env ou no Render env vars.');
+    process.exit(1);
+}
 
-// força todas as instâncias de Pool a usarem a Promise nativa
-pg.Pool.prototype.Promise = global.Promise;
-
-const pool = new pg.Pool({
+const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    },
-    max: 10,
-    idleTimeoutMillis: 600000,    // 10 minutos
-    connectionTimeoutMillis: 2000 // 2s
+    ssl: { rejectUnauthorized: false }
 });
 
-module.exports = pool;
+module.exports = {
+    query: (text, params) => pool.query(text, params)
+};
