@@ -56,8 +56,7 @@ export default function App() {
 
   // Auth
   const [token, setToken] = useState(
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token')
+    localStorage.getItem('token') || sessionStorage.getItem('token')
   );
   const [user, setUser] = useState(null);
   const [view, setView] = useState('login');
@@ -145,7 +144,7 @@ export default function App() {
   const drawer = (
     <div>
       <Toolbar>
-        <Typography variant="h6">Menu</Typography>
+        <Typography variant="h6">Navegação</Typography>
       </Toolbar>
       <Divider />
       <List>
@@ -187,9 +186,8 @@ export default function App() {
     </div>
   );
 
-  // Responsive drawer toggle
   const handleDrawerToggle = () => {
-    setMobileOpen(open => !open);
+    setMobileOpen(o => !o);
   };
 
   return (
@@ -197,10 +195,14 @@ export default function App() {
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
 
-        {/* AppBar */}
+        {/* AppBar ajustado */}
         <AppBar
           position="fixed"
-          sx={{ zIndex: theme => theme.zIndex.drawer + 1 }}
+          sx={{
+            width: { md: `calc(100% - ${drawerWidth}px)` },
+            ml: { md: `${drawerWidth}px` },
+            zIndex: theme => theme.zIndex.drawer + 1
+          }}
         >
           <Toolbar>
             {user && (
@@ -232,7 +234,7 @@ export default function App() {
               ModalProps={{ keepMounted: true }}
               sx={{
                 display: { xs: 'block', md: 'none' },
-                '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
+                '& .MuiDrawer-paper': { width: drawerWidth }
               }}
             >
               {drawer}
@@ -241,7 +243,7 @@ export default function App() {
               variant="permanent"
               sx={{
                 display: { xs: 'none', md: 'block' },
-                '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
+                '& .MuiDrawer-paper': { width: drawerWidth }
               }}
               open
             >
@@ -250,13 +252,14 @@ export default function App() {
           </>
         )}
 
-        {/* Main content */}
+        {/* Conteúdo principal */}
         <Box
           component="main"
           sx={{
             flexGrow: 1,
             p: 3,
-            width: { md: `calc(100% - ${drawerWidth}px)` }
+            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+            ml: { md: `${drawerWidth}px` }
           }}
         >
           <Toolbar />
@@ -272,10 +275,7 @@ export default function App() {
               }}
             >
               {view === 'login' ? (
-                <Login
-                  onLogin={handleLogin}
-                  showRegister={() => setView('register')}
-                />
+                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
               ) : (
                 <Register showLogin={() => setView('login')} />
               )}
