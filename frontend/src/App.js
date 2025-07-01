@@ -44,7 +44,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Tema (light/dark)
+  // Tema
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -53,7 +53,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Auth & usuário
+  // Autenticação
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -97,33 +97,36 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => {
-        if (!r.ok) throw new Error(`Status ${r.status}`);
-        return r.json();
-      })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(raw => {
-        // 1) ordenar por data crescente
+        // Ordena por dia
         const sorted = [...raw].sort(
           (a, b) => new Date(a.dia) - new Date(b.dia)
         );
-        // 2) computar 4º plantão e normalizar campos
         const saturdayCount = {};
         const processed = sorted.map(item => {
+          // Garante string YYYY-MM-DD
+          const diaVal =
+            item.dia instanceof Date
+              ? item.dia.toISOString().split('T')[0]
+              : String(item.dia).split('T')[0];
+
           saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
           let observacao = '';
-          if (new Date(item.dia).getDay() === 6) {
+          if (new Date(diaVal).getDay() === 6) {
             saturdayCount[item.atendente]++;
             if (saturdayCount[item.atendente] === 4) {
               observacao = '4 plantão';
               saturdayCount[item.atendente] = 0;
             }
           }
+
           return {
             id: item.id,
             atendente: item.atendente,
             setor: item.setor,
-            dia: item.dia,                // string "YYYY-MM-DD"
-            horaInicio: item.hora_inicio,        // snake_case do SELECT
+            dia: diaVal,
+            horaInicio: item.hora_inicio,
             horaFim: item.hora_fim,
             loja: item.loja,
             contato: item.contato,
@@ -143,17 +146,14 @@ export default function App() {
     if (token) fetchAtendimentos();
   }, [token]);
 
-  // Geração de PDF
+  // Geração de relatório
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
     fetch(
       `${API_URL}/api/atendimentos/report?date=${reportDate}`,
       { headers: { Authorization: 'Bearer ' + token } }
     )
-      .then(r => {
-        if (!r.ok) throw new Error();
-        return r.blob();
-      })
+      .then(r => (r.ok ? r.blob() : Promise.reject()))
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -165,38 +165,55 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Drawer (menu lateral)
+  // Drawer
   const drawer = (
     <div>
-      <Toolbar><Typography variant="h6">Navegação</Typography></Toolbar>
+      <Toolbar>
+        <Typography variant="h6">Menu</Typography>
+      </Toolbar>
       <Divider />
       <List>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'atendimentos'}
-            onClick={() => { setView('atendimentos'); setMobileOpen(false); }}
+            onClick={() => {
+              setView('atendimentos');
+              setMobileOpen(false);
+            }}
           >
-            <ListItemIcon><EventIcon /></ListItemIcon>
+            <ListItemIcon>
+              <EventIcon />
+            </ListItemIcon>
             <ListItemText primary="Atendimentos" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'categories'}
-            onClick={() => { setView('categories'); setMobileOpen(false); }}
+            onClick={() => {
+              setView('categories');
+              setMobileOpen(false);
+            }}
             disabled={!['DEV', 'SAF'].includes(user?.sector)}
           >
-            <ListItemIcon><CategoryIcon /></ListItemIcon>
+            <ListItemIcon>
+              <CategoryIcon />
+            </ListItemIcon>
             <ListItemText primary="Categorias" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'users'}
-            onClick={() => { setView('users'); setMobileOpen(false); }}
+            onClick={() => {
+              setView('users');
+              setMobileOpen(false);
+            }}
             disabled={user?.sector !== 'DEV'}
           >
-            <ListItemIcon><PeopleIcon /></ListItemIcon>
+            <ListItemIcon>
+              <PeopleIcon />
+            </ListItemIcon>
             <ListItemText primary="Usuários" />
           </ListItemButton>
         </ListItem>
@@ -273,7 +290,7 @@ export default function App() {
           </>
         )}
 
-        {/* Conteúdo */}
+        {/* Conteúdo Principal */}
         <Box
           component="main"
           sx={{
@@ -296,7 +313,10 @@ export default function App() {
               }}
             >
               {view === 'login' ? (
-                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+                <Login
+                  onLogin={handleLogin}
+                  showRegister={() => setView('register')}
+                />
               ) : (
                 <Register showLogin={() => setView('login')} />
               )}
