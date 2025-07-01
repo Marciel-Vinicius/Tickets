@@ -1,3 +1,4 @@
+// frontend/src/components/AtendimentoList.js
 import React from 'react';
 import API_URL from '../config';
 import { DataGrid } from '@mui/x-data-grid';
@@ -19,7 +20,7 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       headerName: 'Data',
       flex: 1,
       minWidth: 100,
-      valueGetter: ({ row }) => row.dia || '',
+      // valueFormatter usa apenas params.value, sem ever tocar em params.row
       valueFormatter: ({ value }) => {
         if (!value) return '';
         const [y, m, d] = String(value).split('-');
@@ -27,20 +28,8 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       },
       sortable: true
     },
-    {
-      field: 'horaInicio',
-      headerName: 'Início',
-      flex: 0.7,
-      minWidth: 100,
-      valueGetter: ({ row }) => row.horaInicio || ''
-    },
-    {
-      field: 'horaFim',
-      headerName: 'Término',
-      flex: 0.7,
-      minWidth: 100,
-      valueGetter: ({ row }) => row.horaFim || ''
-    },
+    { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
+    { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
     { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
     { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
     { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },
