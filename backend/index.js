@@ -4,47 +4,36 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
+// importa a configuração do pool (db.js)
 const pool = require('./db');
 
+// rotas
 const authRouter = require('./routes/auth');
 const userRouter = require('./routes/users');
 const atendRouter = require('./routes/atendimentos');
 const categoryRouter = require('./routes/categories');
 const reportsRouter = require('./routes/reports');
 
+// middleware de autenticação
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// --- CONFIGURAÇÃO CORS GLOBAL ---
-// Use o FRONTEND_URL do seu deploy
-const FRONTEND_URL = 'https://tickets-frontend-kvf1.onrender.com';
-
-const corsOptions = {
-    origin: FRONTEND_URL,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false
-};
-// Aplica CORS a todas as rotas
-app.use(cors(corsOptions));
-// Garante que o preflight seja sempre respondido
-app.options('*', cors(corsOptions));
-
-// --- MIDDLEWARES DE PARSE ---
+// 1) Habilita CORS para **todas** as rotas e ORIGENS
+app.use(cors());           // <== aceita qualquer origem
 app.use(bodyParser.json());
 
-// --- ROTAS PÚBLICAS ---
+// 2) Rotas públicas
 app.use('/api/auth', authRouter);
 
-// --- ROTAS PROTEGIDAS ---
+// 3) Rotas protegidas
 app.use('/api/users', authenticateToken, userRouter);
 app.use('/api/categories', authenticateToken, categoryRouter);
 app.use('/api/atendimentos', authenticateToken, atendRouter);
 app.use('/api/reports', authenticateToken, reportsRouter);
 
-// --- START SERVER ---
+// 4) Inicia o servidor
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-    console.log(`🚀 Backend rodando na porta ${PORT}`);
-});
+app.listen(PORT, () =>
+    console.log(`🚀 Backend rodando na porta ${PORT}`)
+);
