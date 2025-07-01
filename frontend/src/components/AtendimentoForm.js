@@ -18,6 +18,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
+  // Carrega opções de categorias
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -50,7 +51,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
     e.preventDefault();
     if (!isValid) return;
 
-    // monta o body explicitamente
+    // Monta o body explicitamente
     const body = {
       atendente,
       dia: form.dia,
@@ -61,25 +62,34 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       ocorrencia: form.ocorrencia
     };
 
-    await fetch(`${API_URL}/api/atendimentos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
-      },
-      body: JSON.stringify(body)
-    });
-
-    // limpa form e atualiza a lista
-    setForm({
-      dia: today,
-      horaInicio: '',
-      horaFim: '',
-      loja: '',
-      contato: '',
-      ocorrencia: ''
-    });
-    onAdd();
+    try {
+      const res = await fetch(`${API_URL}/api/atendimentos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        // lê a mensagem de erro em texto bruto
+        const text = await res.text();
+        alert(`Erro ao cadastrar: ${res.status} ${text}`);
+        return;
+      }
+      // sucesso → limpa e atualiza a lista
+      setForm({
+        dia: today,
+        horaInicio: '',
+        horaFim: '',
+        loja: '',
+        contato: '',
+        ocorrencia: ''
+      });
+      onAdd();
+    } catch {
+      alert('Erro de conexão ao servidor');
+    }
   };
 
   return (
