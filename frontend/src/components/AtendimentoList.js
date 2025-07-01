@@ -19,21 +19,16 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
     {
       field: 'dia',
       headerName: 'Data',
-      type: 'date',
       flex: 1,
       minWidth: 120,
       sortable: true,
-      // valueGetter agora é seguro contra params undefined
-      valueGetter: params => {
-        const raw = params?.row?.dia;
-        if (!raw) return null;
-        return new Date(raw);
-      },
-      // formatamos a data para pt-BR
-      valueFormatter: params => {
-        const value = params?.value;
-        if (!(value instanceof Date) || isNaN(value)) return '';
-        return value.toLocaleDateString('pt-BR');
+      renderCell: ({ row }) => {
+        const raw = row.dia;
+        if (!raw) return '';
+        // se vier com hora (ISO), limpa tudo após 'T'
+        const dateOnly = String(raw).split('T')[0];
+        const [y, m, d] = dateOnly.split('-');
+        return `${d}/${m}/${y}`;
       }
     },
 
@@ -68,9 +63,7 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
         disableSelectionOnClick
         autoHeight
         initialState={{
-          sorting: {
-            sortModel: [{ field: 'dia', sort: 'asc' }]
-          }
+          sorting: { sortModel: [{ field: 'dia', sort: 'asc' }] }
         }}
       />
     </Box>
