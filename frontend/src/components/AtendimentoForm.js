@@ -1,9 +1,8 @@
-// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-  Paper, Box, TextField, Button, Typography,
-  FormControl, InputLabel, Select, MenuItem
+  Box, TextField, Button, Typography,
+  FormControl, InputLabel, Select, MenuItem, Stack
 } from '@mui/material';
 
 export default function AtendimentoForm({ onAdd, token, atendente }) {
@@ -23,11 +22,13 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => r.json())
-      .then(data => setOpts({
-        lojas: data.lojas,
-        contatos: data.contatos,
-        ocorrencias: data.ocorrencias
-      }))
+      .then(data =>
+        setOpts({
+          lojas: data.lojas,
+          contatos: data.contatos,
+          ocorrencias: data.ocorrencias
+        })
+      )
       .catch(console.error);
   }, [token]);
 
@@ -35,8 +36,18 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
+
+  const isValid =
+    form.dia &&
+    form.horaInicio &&
+    form.horaFim &&
+    form.loja &&
+    form.contato &&
+    form.ocorrencia;
+
   const handleSubmit = e => {
     e.preventDefault();
+    if (!isValid) return;
     fetch(`${API_URL}/api/atendimentos`, {
       method: 'POST',
       headers: {
@@ -45,37 +56,64 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       },
       body: JSON.stringify({ atendente, ...form })
     }).then(() => {
-      setForm({ dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' });
+      setForm({
+        dia: today,
+        horaInicio: '',
+        horaFim: '',
+        loja: '',
+        contato: '',
+        ocorrencia: ''
+      });
       onAdd();
     });
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>Novo Atendimento</Typography>
-      <Box component="form" onSubmit={handleSubmit} sx={{ display: 'grid', gap: 2 }}>
-        <TextField label="Atendente" value={atendente} fullWidth disabled />
+    <Box component="form" onSubmit={handleSubmit}>
+      <Stack spacing={2}>
+        <Typography variant="h6" align="center">Novo Atendimento</Typography>
         <TextField
-          label="Data" name="dia" type="date"
-          value={form.dia} onChange={handleChange}
-          InputLabelProps={{ shrink: true }} fullWidth
+          label="Atendente"
+          value={atendente}
+          disabled
+          fullWidth
         />
         <TextField
-          label="Hora Início" name="horaInicio" type="time"
-          value={form.horaInicio} onChange={handleChange}
-          InputLabelProps={{ shrink: true }} fullWidth
+          label="Data"
+          name="dia"
+          type="date"
+          value={form.dia}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          required
         />
         <TextField
-          label="Hora Término" name="horaFim" type="time"
-          value={form.horaFim} onChange={handleChange}
-          InputLabelProps={{ shrink: true }} fullWidth
+          label="Hora de Início"
+          name="horaInicio"
+          type="time"
+          value={form.horaInicio}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          required
+        />
+        <TextField
+          label="Hora de Término"
+          name="horaFim"
+          type="time"
+          value={form.horaFim}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          required
         />
 
-        <FormControl fullWidth>
+        <FormControl required>
           <InputLabel id="loja-label">Loja</InputLabel>
           <Select
-            labelId="loja-label" name="loja" value={form.loja}
-            label="Loja" onChange={handleChange}
+            labelId="loja-label"
+            name="loja"
+            value={form.loja}
+            label="Loja"
+            onChange={handleChange}
           >
             {opts.lojas.map(loja => (
               <MenuItem key={loja} value={loja}>{loja}</MenuItem>
@@ -83,11 +121,14 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           </Select>
         </FormControl>
 
-        <FormControl fullWidth>
+        <FormControl required>
           <InputLabel id="contato-label">Contato</InputLabel>
           <Select
-            labelId="contato-label" name="contato" value={form.contato}
-            label="Contato" onChange={handleChange}
+            labelId="contato-label"
+            name="contato"
+            value={form.contato}
+            label="Contato"
+            onChange={handleChange}
           >
             {opts.contatos.map(contato => (
               <MenuItem key={contato} value={contato}>{contato}</MenuItem>
@@ -95,11 +136,14 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           </Select>
         </FormControl>
 
-        <FormControl fullWidth>
+        <FormControl required>
           <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
           <Select
-            labelId="ocorrencia-label" name="ocorrencia" value={form.ocorrencia}
-            label="Ocorrência" onChange={handleChange}
+            labelId="ocorrencia-label"
+            name="ocorrencia"
+            value={form.ocorrencia}
+            label="Ocorrência"
+            onChange={handleChange}
           >
             {opts.ocorrencias.map(o => (
               <MenuItem key={o} value={o}>{o}</MenuItem>
@@ -107,8 +151,14 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           </Select>
         </FormControl>
 
-        <Button type="submit" variant="contained">Cadastrar</Button>
-      </Box>
-    </Paper>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={!isValid}
+        >
+          Cadastrar
+        </Button>
+      </Stack>
+    </Box>
   );
 }

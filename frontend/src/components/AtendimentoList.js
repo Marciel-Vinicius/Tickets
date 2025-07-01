@@ -1,4 +1,3 @@
-// frontend/src/components/AtendimentoList.js
 import React from 'react';
 import API_URL from '../config';
 import { DataGrid } from '@mui/x-data-grid';
@@ -16,12 +15,28 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
   const columns = [
     { field: 'atendente', headerName: 'Atendente', flex: 1, minWidth: 120 },
     { field: 'setor', headerName: 'Setor', flex: 1, minWidth: 100 },
-    { field: 'dia', headerName: 'Data', flex: 1, minWidth: 100 },
+    {
+      field: 'dia',
+      headerName: 'Data',
+      flex: 1,
+      minWidth: 100,
+      valueFormatter: params => {
+        const [y, m, d] = params.value.split('-');
+        return `${d}/${m}/${y}`;
+      }
+    },
     { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
     { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
     { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
     { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
     { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },
+    {
+      field: 'observacao',
+      headerName: 'Observação',
+      flex: 1,
+      minWidth: 120,
+      sortable: false
+    },
     {
       field: 'actions',
       headerName: 'Ações',
@@ -45,6 +60,10 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
         rowsPerPageOptions={[5]}
         disableSelectionOnClick
         autoHeight
+        sortingOrder={['asc', 'desc']}
+        initialState={{
+          sorting: { sortModel: [{ field: 'dia', sort: 'asc' }] }
+        }}
       />
     </Box>
   );
