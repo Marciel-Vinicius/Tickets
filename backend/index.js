@@ -9,6 +9,8 @@ const userRouter = require('./routes/users');
 const atendRouter = require('./routes/atendimentos');
 const categoryRouter = require('./routes/categories');
 const reportsRouter = require('./routes/reports');
+const pool = require('./db');
+
 
 const { authenticateToken } = require('./middleware/auth');
 
