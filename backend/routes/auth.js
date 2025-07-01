@@ -1,3 +1,4 @@
+// src/routes/auth.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -29,7 +30,7 @@ router.post('/login', async (req, res) => {
     );
     res.json({ token });
   } catch (err) {
-    console.error('Erro em /api/auth/login:', err);
+    console.error('Erro em POST /api/auth/login:', err);
     res.status(500).json({ error: 'internal_server_error' });
   } finally {
     client.release();
@@ -48,7 +49,7 @@ router.post('/register', async (req, res) => {
     );
     res.status(201).json({ message: 'Usuário cadastrado com sucesso' });
   } catch (err) {
-    console.error('Erro em /api/auth/register:', err);
+    console.error('Erro em POST /api/auth/register:', err);
     res.status(500).json({ error: 'internal_server_error' });
   } finally {
     client.release();

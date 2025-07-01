@@ -1,11 +1,13 @@
-// backend/db.js
+// src/db.js
 require('dotenv').config();
-const { Pool } = require('pg');
 
-// 1) Atribui global.Promise ao prototype da classe
-Pool.prototype.Promise = global.Promise;
+// primeiro, carregue o módulo inteiro para patchar o prototype
+const pg = require('pg');
 
-const pool = new Pool({
+// força todas as instâncias de Pool a usarem a Promise nativa
+pg.Pool.prototype.Promise = global.Promise;
+
+const pool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
         rejectUnauthorized: false
@@ -14,8 +16,5 @@ const pool = new Pool({
     idleTimeoutMillis: 600000,    // 10 minutos
     connectionTimeoutMillis: 2000 // 2s
 });
-
-// 2) Garante também na instância
-pool.Promise = global.Promise;
 
 module.exports = pool;

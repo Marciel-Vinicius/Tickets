@@ -1,5 +1,7 @@
+// src/routes/reports.js
 const express = require('express');
 const pool = require('../db');
+
 const router = express.Router();
 
 // GET /api/reports/summary
@@ -14,7 +16,9 @@ router.get('/summary', async (req, res) => {
         const averageTime = new Date(avgSec * 1000)
             .toISOString().substr(11, 8);
 
-        const totQ = await client.query(`SELECT COUNT(*)::int AS total FROM atendimentos`);
+        const totQ = await client.query(
+            'SELECT COUNT(*)::int AS total FROM atendimentos'
+        );
         const total = totQ.rows[0].total;
 
         const topQ = await client.query(`
@@ -26,7 +30,12 @@ router.get('/summary', async (req, res) => {
     `);
         const top = topQ.rows[0] || { atendente: null, count: 0 };
 
-        res.json({ averageTime, total, topAttendant: top.atendente, topCount: top.count });
+        res.json({
+            averageTime,
+            total,
+            topAttendant: top.atendente,
+            topCount: top.count
+        });
     } catch (err) {
         console.error('Erro em GET /api/reports/summary:', err);
         res.status(500).json({ error: 'internal_server_error' });

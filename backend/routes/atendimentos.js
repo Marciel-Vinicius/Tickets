@@ -1,3 +1,4 @@
+// src/routes/atendimentos.js
 const express = require('express');
 const PDFDocument = require('pdfkit');
 const pool = require('../db');
@@ -33,7 +34,7 @@ router.post('/', async (req, res) => {
     } = req.body;
     await client.query(
       `INSERT INTO atendimentos
-       (atendente, sector, dia, hora_inicio, hora_fim, loja, contato, ocorrencia)
+         (atendente, sector, dia, hora_inicio, hora_fim, loja, contato, ocorrencia)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [atendente, sector, dia, hora_inicio, hora_fim, loja, contato, ocorrencia]
     );

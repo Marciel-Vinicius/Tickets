@@ -1,3 +1,4 @@
+// src/routes/users.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
