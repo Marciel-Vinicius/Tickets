@@ -21,15 +21,36 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       headerName: 'Data',
       flex: 1,
       minWidth: 100,
+      // Pega a data de 'dia' ou, se não existir, de 'date'
+      valueGetter: params => {
+        return params.row.dia ?? params.row.date ?? '';
+      },
+      // Formata como DD/MM/AAAA
       valueFormatter: params => {
-        const v = params.value;
-        if (!v) return '';             // protege contra undefined
-        const [y, m, d] = v.split('-');
+        const raw = params.value;
+        if (!raw) return '';
+        // Se for Date object, converte em string ISO; se for string, usa direto
+        const str =
+          raw instanceof Date ? raw.toISOString().split('T')[0] : raw;
+        const [y, m, d] = str.split('-');
         return `${d}/${m}/${y}`;
-      }
+      },
+      sortable: true
     },
-    { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
-    { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
+    {
+      field: 'horaInicio',
+      headerName: 'Início',
+      flex: 0.7,
+      minWidth: 100,
+      valueGetter: params => params.row.horaInicio ?? params.row.hora_inicio ?? ''
+    },
+    {
+      field: 'horaFim',
+      headerName: 'Término',
+      flex: 0.7,
+      minWidth: 100,
+      valueGetter: params => params.row.horaFim ?? params.row.hora_fim ?? ''
+    },
     { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
     { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
     { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },
@@ -58,14 +79,16 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
       <DataGrid
         rows={atendimentos}
         columns={columns}
+        // No rowId pega do campo 'id'
         getRowId={row => row.id}
         pageSize={5}
-        rowsPerPageOptions={[5]}
+        rowsPerPageOptions={[5, 10, 25, 100]}
         disableSelectionOnClick
         autoHeight
-        sortingOrder={['asc', 'desc']}
         initialState={{
-          sorting: { sortModel: [{ field: 'dia', sort: 'asc' }] }
+          sorting: {
+            sortModel: [{ field: 'dia', sort: 'asc' }]
+          }
         }}
       />
     </Box>
