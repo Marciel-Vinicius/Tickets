@@ -1,7 +1,7 @@
-// backend/index.js
+// src/index.js
 require('dotenv').config();
 const express = require('express');
-const pool = require('./db');               // usa o db.js acima
+const pool = require('./db');               // seu pool
 const authRouter = require('./routes/auth');
 const userRouter = require('./routes/users');
 const atendRouter = require('./routes/atendimentos');
@@ -11,9 +11,9 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// 1) CORS manual em TODAS as rotas e respostas
+// --- CORS MANUAL PARA TODAS ROTAS ---
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // ou restrinja ao seu domínio
+    res.header('Access-Control-Allow-Origin', '*');
     res.header(
         'Access-Control-Allow-Headers',
         'Origin, X-Requested-With, Content-Type, Accept, Authorization'
@@ -28,20 +28,20 @@ app.use((req, res, next) => {
     next();
 });
 
-// 2) Parser de JSON
+// --- PARSE JSON ---
 app.use(express.json());
 
-// 3) Rotas públicas
+// --- ROTAS PÚBLICAS ---
 app.use('/api/auth', authRouter);
 
-// 4) Rotas protegidas
+// --- ROTAS PROTEGIDAS ---
 app.use('/api/users', authenticateToken, userRouter);
 app.use('/api/categories', authenticateToken, categoryRouter);
 app.use('/api/atendimentos', authenticateToken, atendRouter);
 app.use('/api/reports', authenticateToken, reportsRouter);
 
-// 5) Inicia o servidor
-const PORT = process.env.PORT || 3001;
+// --- INICIA O SERVIDOR ---
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
     console.log(`🚀 Backend rodando na porta ${PORT}`)
 );
