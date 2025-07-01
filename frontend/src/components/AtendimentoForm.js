@@ -1,3 +1,4 @@
+// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
@@ -34,7 +35,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
 
   const handleChange = e => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
   };
 
   const isValid =
@@ -45,27 +46,40 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
     form.contato &&
     form.ocorrencia;
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
     if (!isValid) return;
-    fetch(`${API_URL}/api/atendimentos`, {
+
+    // monta o body explicitamente
+    const body = {
+      atendente,
+      dia: form.dia,
+      horaInicio: form.horaInicio,
+      horaFim: form.horaFim,
+      loja: form.loja,
+      contato: form.contato,
+      ocorrencia: form.ocorrencia
+    };
+
+    await fetch(`${API_URL}/api/atendimentos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + token
       },
-      body: JSON.stringify({ atendente, ...form })
-    }).then(() => {
-      setForm({
-        dia: today,
-        horaInicio: '',
-        horaFim: '',
-        loja: '',
-        contato: '',
-        ocorrencia: ''
-      });
-      onAdd();
+      body: JSON.stringify(body)
     });
+
+    // limpa form e atualiza a lista
+    setForm({
+      dia: today,
+      horaInicio: '',
+      horaFim: '',
+      loja: '',
+      contato: '',
+      ocorrencia: ''
+    });
+    onAdd();
   };
 
   return (
@@ -85,6 +99,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           value={form.dia}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
           required
         />
         <TextField
@@ -94,6 +109,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           value={form.horaInicio}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
           required
         />
         <TextField
@@ -103,10 +119,11 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           value={form.horaFim}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
           required
         />
 
-        <FormControl required>
+        <FormControl fullWidth required>
           <InputLabel id="loja-label">Loja</InputLabel>
           <Select
             labelId="loja-label"
@@ -121,7 +138,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           </Select>
         </FormControl>
 
-        <FormControl required>
+        <FormControl fullWidth required>
           <InputLabel id="contato-label">Contato</InputLabel>
           <Select
             labelId="contato-label"
@@ -130,13 +147,13 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
             label="Contato"
             onChange={handleChange}
           >
-            {opts.contatos.map(contato => (
-              <MenuItem key={contato} value={contato}>{contato}</MenuItem>
+            {opts.contatos.map(c => (
+              <MenuItem key={c} value={c}>{c}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <FormControl required>
+        <FormControl fullWidth required>
           <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
           <Select
             labelId="ocorrencia-label"
@@ -155,6 +172,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           type="submit"
           variant="contained"
           disabled={!isValid}
+          fullWidth
         >
           Cadastrar
         </Button>
