@@ -1,45 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import AtendimentoForm from './AtendimentoForm';
 
-const AtendimentoList = () => {
+function AtendimentoList({ apiUrl, token }) {
   const [atendimentos, setAtendimentos] = useState([]);
-  const [editItem, setEditItem] = useState(null);
+  const [editing, setEditing] = useState(null);
 
   const fetchAtendimentos = async () => {
-    const res = await fetch('/api/atendimentos');
-    const data = await res.json();
-    setAtendimentos(data);
+    const res = await fetch(`${apiUrl}/atendimentos`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setAtendimentos(await res.json());
   };
 
-  useEffect(() => {
-    fetchAtendimentos();
-  }, []);
+  useEffect(() => { fetchAtendimentos(); }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Deseja excluir este atendimento?')) return;
-    await fetch(`/api/atendimentos/${id}`, { method: 'DELETE' });
+    if (!window.confirm('Tem certeza que deseja excluir?')) return;
+    await fetch(`${apiUrl}/atendimentos/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
     fetchAtendimentos();
   };
 
-  const handleEdit = (item) => {
-    setEditItem(item);
-  };
+  const handleEdit = (item) => setEditing(item);
 
-  const handleSave = async () => {
-    setEditItem(null);
+  const handleFormClose = () => setEditing(null);
+
+  const handleFormSave = () => {
+    setEditing(null);
     fetchAtendimentos();
   };
 
   return (
     <div>
       <h2>Lista de Atendimentos</h2>
-      {editItem && (
-        <AtendimentoForm
-          initialData={editItem}
-          onSave={handleSave}
-          onCancel={() => setEditItem(null)}
-        />
-      )}
       <table>
         <thead>
           <tr>
@@ -67,14 +62,23 @@ const AtendimentoList = () => {
               <td>{item.ocorrencia}</td>
               <td>
                 <button onClick={() => handleEdit(item)}>Editar</button>
-                <button onClick={() => handleDelete(item.id)} style={{ marginLeft: 8, color: 'red' }}>Excluir</button>
+                <button onClick={() => handleDelete(item.id)}>Excluir</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {editing &&
+        <AtendimentoForm
+          apiUrl={apiUrl}
+          token={token}
+          initialData={editing}
+          onClose={handleFormClose}
+          onSave={handleFormSave}
+        />}
     </div>
   );
-};
+}
 
 export default AtendimentoList;
