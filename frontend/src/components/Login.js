@@ -21,7 +21,7 @@ export default function Login({ onLogin, showRegister }) {
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
-
+  // Criar
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');

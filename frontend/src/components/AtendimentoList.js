@@ -69,3 +69,4 @@ export default function AtendimentoList({ atendimentos, token, onDelete }) {
     </Box>
   );
 }
+// Criar
