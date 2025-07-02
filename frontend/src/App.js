@@ -1,6 +1,6 @@
 // frontend/src/App.js
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import { lightTheme, darkTheme } from './theme';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -11,14 +11,14 @@ const Dashboard = lazy(() => import('./components/Dashboard'));
 
 function PrivateRoute({ children }) {
   const { token } = useAuth();
-  return token ? children : <Navigate to="/login" />;
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 function AppWrapper() {
   return (
     <ThemeProvider theme={lightTheme}>
       <CssBaseline />
-      <BrowserRouter>
+      <Router>
         <Suspense
           fallback={
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
@@ -39,7 +39,7 @@ function AppWrapper() {
             />
           </Routes>
         </Suspense>
-      </BrowserRouter>
+      </Router>
     </ThemeProvider>
   );
 }
