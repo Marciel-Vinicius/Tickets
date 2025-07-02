@@ -6,162 +6,186 @@ import {
   FormControl, InputLabel, Select, MenuItem, Stack
 } from '@mui/material';
 
-export default function AtendimentoForm({
-  token,
-  atendente,
-  editing,
-  onSave,
-  onCancel
-}) {
-  const today = new Date().toISOString().slice(0, 10);
-  const empty = { dia: today, hora_inicio: '', hora_fim: '', loja: '', contato: '', ocorrencia: '' };
-  const [form, setForm] = useState(empty);
-  const [lojas, setLojas] = useState([]);
-  const [contatos, setContatos] = useState([]);
-  const [ocorrencias, setOcorrencias] = useState([]);
+export default function AtendimentoForm({ onAdd, token, atendente }) {
+  const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({
+    dia: today,
+    horaInicio: '',
+    horaFim: '',
+    loja: '',
+    contato: '',
+    ocorrencia: ''
+  });
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  const headers = { Authorization: `Bearer ${token}` };
-
+  // Carrega opções de categorias
   useEffect(() => {
-    // busca dropdowns
-    fetch(`${API_URL}/api/categories?type=loja`, { headers })
-      .then(r => r.json()).then(setLojas);
-    fetch(`${API_URL}/api/categories?type=contato`, { headers })
-      .then(r => r.json()).then(setContatos);
-    fetch(`${API_URL}/api/categories?type=ocorrencia`, { headers })
-      .then(r => r.json()).then(setOcorrencias);
+    fetch(`${API_URL}/api/categories`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => r.json())
+      .then(data =>
+        setOpts({
+          lojas: data.lojas,
+          contatos: data.contatos,
+          ocorrencias: data.ocorrencias
+        })
+      )
+      .catch(console.error);
   }, [token]);
-
-  useEffect(() => {
-    if (editing) {
-      setForm({
-        dia: editing.dia.split('T')[0],
-        hora_inicio: editing.hora_inicio,
-        hora_fim: editing.hora_fim,
-        loja: editing.loja,
-        contato: editing.contato,
-        ocorrencia: editing.ocorrencia
-      });
-    } else {
-      setForm(empty);
-    }
-  }, [editing]);
-
-  const isValid = Object.values(form).every(v => v);
 
   const handleChange = e => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
   };
 
+  const isValid =
+    form.dia &&
+    form.horaInicio &&
+    form.horaFim &&
+    form.loja &&
+    form.contato &&
+    form.ocorrencia;
+
   const handleSubmit = async e => {
     e.preventDefault();
-    const method = editing ? 'PUT' : 'POST';
-    const url = editing
-      ? `${API_URL}/api/atendimentos/${editing.id}`
-      : `${API_URL}/api/atendimentos`;
-    const body = { atendente, sector: editing?.sector || '', ...form };
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-      return alert('Erro ao salvar atendimento');
+    if (!isValid) return;
+
+    // Monta o body explicitamente
+    const body = {
+      atendente,
+      dia: form.dia,
+      horaInicio: form.horaInicio,
+      horaFim: form.horaFim,
+      loja: form.loja,
+      contato: form.contato,
+      ocorrencia: form.ocorrencia
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/api/atendimentos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        // lê a mensagem de erro em texto bruto
+        const text = await res.text();
+        alert(`Erro ao cadastrar: ${res.status} ${text}`);
+        return;
+      }
+      // sucesso → limpa e atualiza a lista
+      setForm({
+        dia: today,
+        horaInicio: '',
+        horaFim: '',
+        loja: '',
+        contato: '',
+        ocorrencia: ''
+      });
+      onAdd();
+    } catch {
+      alert('Erro de conexão ao servidor');
     }
-    onSave();
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        {editing ? 'Editar Atendimento' : 'Novo Atendimento'}
-      </Typography>
+    <Box component="form" onSubmit={handleSubmit}>
       <Stack spacing={2}>
+        <Typography variant="h6" align="center">Novo Atendimento</Typography>
         <TextField
-          label="Data *"
+          label="Atendente"
+          value={atendente}
+          disabled
+          fullWidth
+        />
+        <TextField
+          label="Data"
           name="dia"
           type="date"
           value={form.dia}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
           required
         />
         <TextField
-          label="Hora Início *"
-          name="hora_inicio"
+          label="Hora de Início"
+          name="horaInicio"
           type="time"
-          value={form.hora_inicio}
+          value={form.horaInicio}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
           required
         />
         <TextField
-          label="Hora Fim *"
-          name="hora_fim"
+          label="Hora de Término"
+          name="horaFim"
           type="time"
-          value={form.hora_fim}
+          value={form.horaFim}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
           required
         />
 
-        <FormControl required>
-          <InputLabel>Loja</InputLabel>
+        <FormControl fullWidth required>
+          <InputLabel id="loja-label">Loja</InputLabel>
           <Select
+            labelId="loja-label"
             name="loja"
             value={form.loja}
-            onChange={handleChange}
             label="Loja"
+            onChange={handleChange}
           >
-            {lojas.map(l => (
-              <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>
+            {opts.lojas.map(loja => (
+              <MenuItem key={loja} value={loja}>{loja}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <FormControl required>
-          <InputLabel>Contato</InputLabel>
+        <FormControl fullWidth required>
+          <InputLabel id="contato-label">Contato</InputLabel>
           <Select
+            labelId="contato-label"
             name="contato"
             value={form.contato}
-            onChange={handleChange}
             label="Contato"
+            onChange={handleChange}
           >
-            {contatos.map(c => (
-              <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
+            {opts.contatos.map(c => (
+              <MenuItem key={c} value={c}>{c}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <FormControl required>
-          <InputLabel>Ocorrência</InputLabel>
+        <FormControl fullWidth required>
+          <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
           <Select
+            labelId="ocorrencia-label"
             name="ocorrencia"
             value={form.ocorrencia}
-            onChange={handleChange}
             label="Ocorrência"
+            onChange={handleChange}
           >
-            {ocorrencias.map(o => (
-              <MenuItem key={o.id} value={o.name}>{o.name}</MenuItem>
+            {opts.ocorrencias.map(o => (
+              <MenuItem key={o} value={o}>{o}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={!isValid}
-          >
-            {editing ? 'Atualizar' : 'Cadastrar'}
-          </Button>
-          {editing && (
-            <Button variant="outlined" onClick={onCancel}>
-              Cancelar
-            </Button>
-          )}
-        </Box>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={!isValid}
+          fullWidth
+        >
+          Cadastrar
+        </Button>
       </Stack>
     </Box>
   );

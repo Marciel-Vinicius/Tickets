@@ -1,116 +1,98 @@
-// frontend/src/App.js
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
-  CssBaseline,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Box,
-  Divider,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Drawer,
-  Container,
-  TextField,
-  Button,
-  Paper,
+  CssBaseline, AppBar, Toolbar, Typography,
+  IconButton, Box, Divider, List, ListItem,
+  ListItemButton, ListItemIcon, ListItemText,
+  Drawer, Container, TextField, Button, Paper,
   Grid
-} from '@mui/material'
-import { ThemeProvider } from '@mui/material/styles'
-import MenuIcon from '@mui/icons-material/Menu'
-import EventIcon from '@mui/icons-material/Event'
-import CategoryIcon from '@mui/icons-material/Category'
-import PeopleIcon from '@mui/icons-material/People'
-import BarChartIcon from '@mui/icons-material/BarChart'
-import Brightness4Icon from '@mui/icons-material/Brightness4'
-import Brightness7Icon from '@mui/icons-material/Brightness7'
+} from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
+import MenuIcon from '@mui/icons-material/Menu';
+import EventIcon from '@mui/icons-material/Event';
+import CategoryIcon from '@mui/icons-material/Category';
+import PeopleIcon from '@mui/icons-material/People';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { lightTheme, darkTheme } from './theme';
 
-import { lightTheme, darkTheme } from './theme'
-import API_URL from './config'
-import Login from './components/Login'
-import Register from './components/Register'
-import AtendimentoForm from './components/AtendimentoForm'
-import AtendimentoList from './components/AtendimentoList'
-import UserManagement from './components/UserManagement'
-import CategoryManagement from './components/CategoryManagement'
-import ReportDashboard from './components/ReportDashboard'
+import API_URL from './config';
+import Login from './components/Login';
+import Register from './components/Register';
+import AtendimentoForm from './components/AtendimentoForm';
+import AtendimentoList from './components/AtendimentoList';
+import UserManagement from './components/UserManagement';
+import CategoryManagement from './components/CategoryManagement';
+import ReportDashboard from './components/ReportDashboard';
 
-const drawerWidth = 240
+const drawerWidth = 240;
 
 function parseJwt(token) {
-  if (!token) return null
+  if (!token) return null;
   try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const json = atob(base64)
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
     return JSON.parse(
       decodeURIComponent(
         json.split('').map(c =>
           '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
         ).join('')
       )
-    )
+    );
   } catch {
-    return null
+    return null;
   }
 }
 
 export default function App() {
-  // theme
-  const [mode, setMode] = useState(localStorage.getItem('mode') || 'light')
-  const theme = mode === 'light' ? lightTheme : darkTheme
+  const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
+  const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
-    const next = mode === 'light' ? 'dark' : 'light'
-    setMode(next)
-    localStorage.setItem('mode', next)
-  }
+    const next = mode === 'light' ? 'dark' : 'light';
+    setMode(next);
+    localStorage.setItem('mode', next);
+  };
 
-  // auth state
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
-  )
-  const [user, setUser] = useState(null)
-  const [view, setView] = useState('login')
-  const [mobileOpen, setMobileOpen] = useState(false)
+  );
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('login');
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (token) {
-      setUser(parseJwt(token))
-      setView('atendimentos')
+      setUser(parseJwt(token));
+      setView('atendimentos');
     } else {
-      setUser(null)
-      setView('login')
+      setUser(null);
+      setView('login');
     }
-  }, [token])
+  }, [token]);
 
   const handleLogin = (t, remember) => {
     if (remember) {
-      localStorage.setItem('token', t)
-      sessionStorage.removeItem('token')
+      localStorage.setItem('token', t);
+      sessionStorage.removeItem('token');
     } else {
-      sessionStorage.setItem('token', t)
-      localStorage.removeItem('token')
+      sessionStorage.setItem('token', t);
+      localStorage.removeItem('token');
     }
-    setToken(t)
-  }
+    setToken(t);
+  };
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    sessionStorage.removeItem('token')
-    setToken(null)
-    setMobileOpen(false)
-  }
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    setToken(null);
+    setMobileOpen(false);
+  };
 
-  // atendimentos data
-  const [atendimentos, setAtendimentos] = useState([])
-  const [editingItem, setEditingItem] = useState(null)
-  const [reportDate, setReportDate] = useState('')
+  const [atendimentos, setAtendimentos] = useState([]);
+  const [reportDate, setReportDate] = useState('');
 
   const fetchAtendimentos = () => {
-    if (!token) return
+    if (!token) return;
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
@@ -118,52 +100,68 @@ export default function App() {
       .then(raw => {
         const sorted = [...raw].sort(
           (a, b) => new Date(a.dia) - new Date(b.dia)
-        )
-        setAtendimentos(sorted)
+        );
+        const saturdayCount = {};
+        const processed = sorted.map(item => {
+          const [Y, M, D] = item.dia.split('-').map(n => parseInt(n, 10));
+          const dt = new Date(Y, M - 1, D);
+          saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
+          let observacao = '';
+          if (dt.getDay() === 6) {
+            saturdayCount[item.atendente]++;
+            if (saturdayCount[item.atendente] === 4) {
+              observacao = '4 plantão';
+              saturdayCount[item.atendente] = 0;
+            }
+          }
+          return {
+            id: item.id,
+            atendente: item.atendente,
+            setor: item.setor,
+            dia: item.dia,
+            horaInicio: item.hora_inicio,
+            horaFim: item.hora_fim,
+            loja: item.loja,
+            contato: item.contato,
+            ocorrencia: item.ocorrencia,
+            observacao
+          };
+        });
+        setAtendimentos(processed);
       })
       .catch(err => {
-        console.error(err)
-        alert('Falha ao carregar atendimentos.')
-      })
-  }
-  useEffect(() => {
-    if (token) fetchAtendimentos()
-  }, [token])
-
-  const handleSave = () => {
-    setEditingItem(null)
-    fetchAtendimentos()
-  }
+        console.error(err);
+        alert('Falha ao carregar atendimentos.');
+      });
+  };
+  useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
   const generateReport = () => {
-    if (!reportDate) return alert('Selecione uma data')
+    if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => r.ok ? r.blob() : Promise.reject())
       .then(blob => {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `relatorio-${reportDate}.pdf`
-        a.click()
-        URL.revokeObjectURL(url)
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-${reportDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
       })
-      .catch(() => alert('Erro ao gerar relatório'))
-  }
+      .catch(() => alert('Erro ao gerar relatório'));
+  };
 
-  // drawer menu
   const drawer = (
     <div>
-      <Toolbar>
-        <Typography variant="h6">Menu</Typography>
-      </Toolbar>
+      <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
       <Divider />
       <List>
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'atendimentos'}
-            onClick={() => { setView('atendimentos'); setMobileOpen(false) }}
+            onClick={() => { setView('atendimentos'); setMobileOpen(false); }}
           >
             <ListItemIcon><EventIcon /></ListItemIcon>
             <ListItemText primary="Atendimentos" />
@@ -172,7 +170,7 @@ export default function App() {
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'categories'}
-            onClick={() => { setView('categories'); setMobileOpen(false) }}
+            onClick={() => { setView('categories'); setMobileOpen(false); }}
             disabled={!['DEV', 'SAF'].includes(user?.sector)}
           >
             <ListItemIcon><CategoryIcon /></ListItemIcon>
@@ -182,7 +180,7 @@ export default function App() {
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'users'}
-            onClick={() => { setView('users'); setMobileOpen(false) }}
+            onClick={() => { setView('users'); setMobileOpen(false); }}
             disabled={user?.sector !== 'DEV'}
           >
             <ListItemIcon><PeopleIcon /></ListItemIcon>
@@ -192,13 +190,12 @@ export default function App() {
         <ListItem disablePadding>
           <ListItemButton
             selected={view === 'reports'}
-            onClick={() => { setView('reports'); setMobileOpen(false) }}
+            onClick={() => { setView('reports'); setMobileOpen(false); }}
           >
             <ListItemIcon><BarChartIcon /></ListItemIcon>
             <ListItemText primary="Relatórios" />
           </ListItemButton>
         </ListItem>
-        <Divider />
         <ListItem disablePadding>
           <ListItemButton onClick={handleLogout}>
             <ListItemText primary="Logout" />
@@ -206,16 +203,15 @@ export default function App() {
         </ListItem>
       </List>
     </div>
-  )
+  );
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(open => !open)
-  }
+  const handleDrawerToggle = () => setMobileOpen(o => !o);
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
+
         <AppBar
           position="fixed"
           sx={{
@@ -281,6 +277,7 @@ export default function App() {
           }}
         >
           <Toolbar />
+
           {!user ? (
             <Container
               maxWidth="xs"
@@ -305,9 +302,7 @@ export default function App() {
                       <AtendimentoForm
                         token={token}
                         atendente={user.username}
-                        editing={editingItem}
-                        onSave={handleSave}
-                        onCancel={() => setEditingItem(null)}
+                        onAdd={fetchAtendimentos}
                       />
                     </Paper>
                   </Grid>
@@ -340,25 +335,21 @@ export default function App() {
                         atendimentos={atendimentos}
                         token={token}
                         onDelete={fetchAtendimentos}
-                        onEdit={item => setEditingItem(item)}
                       />
                     </Paper>
                   </Grid>
                 </Grid>
               )}
-
               {view === 'categories' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <CategoryManagement token={token} />
                 </Paper>
               )}
-
               {view === 'users' && user.sector === 'DEV' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <UserManagement token={token} />
                 </Paper>
               )}
-
               {view === 'reports' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <ReportDashboard token={token} />
@@ -369,5 +360,5 @@ export default function App() {
         </Box>
       </Box>
     </ThemeProvider>
-  )
+  );
 }
