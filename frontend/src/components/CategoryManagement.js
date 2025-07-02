@@ -2,121 +2,97 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-    Box, Typography, Tabs, Tab,
-    Button, Dialog, DialogTitle,
-    DialogContent, DialogActions,
-    TextField, IconButton
+    Box, TextField, Button, Select, MenuItem,
+    FormControl, InputLabel, IconButton, Stack, Typography
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function CategoryManagement({ token }) {
-    const [tab, setTab] = useState('lojas');
-    const [data, setData] = useState([]);
-    const [open, setOpen] = useState(false);
-    const [current, setCurrent] = useState({ oldValue: '', value: '' });
+    const [type, setType] = useState('loja');
+    const [list, setList] = useState([]);
+    const [newName, setNewName] = useState('');
 
-    const fetchData = () => {
-        fetch(`${API_URL}/api/categories`, {
-            headers: { Authorization: 'Bearer ' + token }
-        })
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
+    const fetchList = () => {
+        fetch(`${API_URL}/api/categories?type=${type}`, { headers })
             .then(r => r.json())
-            .then(obj => setData(obj[tab]))
-            .catch(console.error);
+            .then(setList);
     };
-    useEffect(fetchData, [tab]);
 
-    const handleChangeTab = (_, newVal) => setTab(newVal);
-    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
-    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
-    const handleDelete = v => {
-        if (!window.confirm('Confirma exclusão?')) return;
-        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
+    useEffect(fetchList, [type]);
+
+    const handleAdd = () => {
+        if (!newName) return;
+        fetch(`${API_URL}/api/categories`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ name: newName, type })
+        })
+            .then(r => r.ok && fetchList())
+            .finally(() => setNewName(''));
+    };
+
+    const handleDelete = id =>
+        fetch(`${API_URL}/api/categories/${id}`, {
             method: 'DELETE',
-            headers: { Authorization: 'Bearer ' + token }
-        }).then(fetchData);
-    };
-
-    const handleSave = () => {
-        const isEdit = Boolean(current.oldValue);
-        const url = isEdit
-            ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
-            : `${API_URL}/api/categories/${tab}`;
-        const method = isEdit ? 'PUT' : 'POST';
-        fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + token
-            },
-            body: JSON.stringify({ value: current.value })
-        }).then(() => {
-            setOpen(false);
-            fetchData();
-        });
-    };
-
-    const columns = [
-        { field: 'value', headerName: 'Valor', flex: 1 },
-        {
-            field: 'actions',
-            headerName: 'Ações',
-            flex: 0.5,
-            sortable: false,
-            renderCell: params => (
-                <>
-                    <IconButton onClick={() => handleEdit(params.row.value)}>
-                        <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(params.row.value)}>
-                        <DeleteIcon color="error" />
-                    </IconButton>
-                </>
-            )
-        }
-    ];
+            headers
+        }).then(() => fetchList());
 
     return (
-        <Box>
-            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
-            <Tabs value={tab} onChange={handleChangeTab}>
-                <Tab label="Lojas" value="lojas" />
-                <Tab label="Contatos" value="contatos" />
-                <Tab label="Ocorrências" value="ocorrencias" />
-            </Tabs>
+        <Box sx={{ maxWidth: 400, mx: 'auto' }}>
+            <Typography variant="h6" gutterBottom>
+                Gerenciar {type === 'loja' ? 'Lojas'
+                    : type === 'contato' ? 'Contatos'
+                        : 'Ocorrências'}
+            </Typography>
 
-            <Box sx={{ mt: 2, mb: 2 }}>
-                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
-            </Box>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Tipo</InputLabel>
+                <Select
+                    value={type}
+                    label="Tipo"
+                    onChange={e => setType(e.target.value)}
+                >
+                    <MenuItem value="loja">Loja</MenuItem>
+                    <MenuItem value="contato">Contato</MenuItem>
+                    <MenuItem value="ocorrencia">Ocorrência</MenuItem>
+                </Select>
+            </FormControl>
 
-            <div style={{ height: 400, width: '100%' }}>
-                <DataGrid
-                    rows={data.map(v => ({ id: v, value: v }))}
-                    columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5]}
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <TextField
+                    fullWidth
+                    label="Novo nome"
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
                 />
-            </div>
+                <Button variant="contained" onClick={handleAdd}>
+                    Adicionar
+                </Button>
+            </Stack>
 
-            <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'}
-                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
-                </DialogTitle>
-                <DialogContent sx={{ mt: 1 }}>
-                    <TextField
-                        label="Valor"
-                        value={current.value}
-                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
-                        fullWidth
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">Salvar</Button>
-                </DialogActions>
-            </Dialog>
+            <Stack spacing={1}>
+                {list.map(item => (
+                    <Box
+                        key={item.id}
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            p: 1,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1
+                        }}
+                    >
+                        <Typography>{item.name}</Typography>
+                        <IconButton color="error" onClick={() => handleDelete(item.id)}>
+                            <DeleteIcon />
+                        </IconButton>
+                    </Box>
+                ))}
+            </Stack>
         </Box>
     );
 }
