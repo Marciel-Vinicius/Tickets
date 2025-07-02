@@ -1,122 +1,189 @@
-// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
-import API_URL from '../config';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { object, string } from 'yup';
 import {
-    Box, Typography, Tabs, Tab,
-    Button, Dialog, DialogTitle,
-    DialogContent, DialogActions,
-    TextField, IconButton
+    Box,
+    TextField,
+    Button,
+    Select,
+    MenuItem,
+    InputLabel,
+    FormControl,
+    IconButton,
+    Stack,
+    Typography,
+    CircularProgress
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import {
+    getCategories,
+    createCategory,
+    deleteCategory
+} from '../services/api';
+
+const schema = object({
+    type: string().required('Tipo é obrigatório'),
+    name: string().required('Nome é obrigatório')
+});
 
 export default function CategoryManagement({ token }) {
-    const [tab, setTab] = useState('lojas');
-    const [data, setData] = useState([]);
-    const [open, setOpen] = useState(false);
-    const [current, setCurrent] = useState({ oldValue: '', value: '' });
+    const [loadingList, setLoadingList] = useState(false);
+    const [list, setList] = useState([]);
+    const [submitLoading, setSubmitLoading] = useState(false);
 
-    const fetchData = () => {
-        fetch(`${API_URL}/api/categories`, {
-            headers: { Authorization: 'Bearer ' + token }
-        })
-            .then(r => r.json())
-            .then(obj => setData(obj[tab]))
-            .catch(console.error);
-    };
-    useEffect(fetchData, [tab]);
+    const {
+        handleSubmit,
+        control,
+        reset,
+        formState: { errors }
+    } = useForm({
+        resolver: yupResolver(schema),
+        defaultValues: { type: 'loja', name: '' }
+    });
 
-    const handleChangeTab = (_, newVal) => setTab(newVal);
-    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
-    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
-    const handleDelete = v => {
-        if (!window.confirm('Confirma exclusão?')) return;
-        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
-            method: 'DELETE',
-            headers: { Authorization: 'Bearer ' + token }
-        }).then(fetchData);
-    };
-
-    const handleSave = () => {
-        const isEdit = Boolean(current.oldValue);
-        const url = isEdit
-            ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
-            : `${API_URL}/api/categories/${tab}`;
-        const method = isEdit ? 'PUT' : 'POST';
-        fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + token
-            },
-            body: JSON.stringify({ value: current.value })
-        }).then(() => {
-            setOpen(false);
-            fetchData();
-        });
-    };
-
-    const columns = [
-        { field: 'value', headerName: 'Valor', flex: 1 },
-        {
-            field: 'actions',
-            headerName: 'Ações',
-            flex: 0.5,
-            sortable: false,
-            renderCell: params => (
-                <>
-                    <IconButton onClick={() => handleEdit(params.row.value)}>
-                        <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(params.row.value)}>
-                        <DeleteIcon color="error" />
-                    </IconButton>
-                </>
-            )
+    const fetchList = async type => {
+        setLoadingList(true);
+        try {
+            const res = await getCategories(type, token);
+            setList(res.data);
+        } catch {
+            alert('Erro ao carregar categorias');
+        } finally {
+            setLoadingList(false);
         }
-    ];
+    };
+
+    useEffect(() => {
+        fetchList('loja');
+    }, []); // inicial carrega lojas
+
+    const onSubmit = async data => {
+        setSubmitLoading(true);
+        try {
+            await createCategory(data, token);
+            fetchList(data.type);
+            reset({ type: data.type, name: '' });
+        } catch {
+            alert('Erro ao criar categoria');
+        } finally {
+            setSubmitLoading(false);
+        }
+    };
+
+    const handleTypeChange = e => {
+        const t = e.target.value;
+        reset({ type: t, name: '' });
+        fetchList(t);
+    };
+
+    const onDelete = async id => {
+        try {
+            await deleteCategory(id, token);
+            fetchList(control._formValues.type);
+        } catch {
+            alert('Erro ao excluir');
+        }
+    };
 
     return (
-        <Box>
-            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
-            <Tabs value={tab} onChange={handleChangeTab}>
-                <Tab label="Lojas" value="lojas" />
-                <Tab label="Contatos" value="contatos" />
-                <Tab label="Ocorrências" value="ocorrencias" />
-            </Tabs>
+        <Box sx={{ maxWidth: 400, mx: 'auto' }}>
+            <Typography variant="h6" gutterBottom>
+                Gerenciar Categorias
+            </Typography>
 
-            <Box sx={{ mt: 2, mb: 2 }}>
-                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
+            <Controller
+                name="type"
+                control={control}
+                render={({ field }) => (
+                    <FormControl fullWidth sx={{ mb: 2 }} error={!!errors.type}>
+                        <InputLabel>Tipo</InputLabel>
+                        <Select label="Tipo" {...field} onChange={e => {
+                            field.onChange(e);
+                            handleTypeChange(e);
+                        }}>
+                            <MenuItem value="loja">Loja</MenuItem>
+                            <MenuItem value="contato">Contato</MenuItem>
+                            <MenuItem value="ocorrencia">Ocorrência</MenuItem>
+                        </Select>
+                        {errors.type && (
+                            <Typography variant="caption" color="error">
+                                {errors.type.message}
+                            </Typography>
+                        )}
+                    </FormControl>
+                )}
+            />
+
+            <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                    <Controller
+                        name="name"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                fullWidth
+                                label="Novo nome"
+                                error={!!errors.name}
+                                helperText={errors.name?.message}
+                                {...field}
+                            />
+                        )}
+                    />
+                    <Box sx={{ position: 'relative' }}>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={submitLoading}
+                        >
+                            Adicionar
+                        </Button>
+                        {submitLoading && (
+                            <CircularProgress
+                                size={24}
+                                sx={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    mt: '-12px',
+                                    ml: '-12px'
+                                }}
+                            />
+                        )}
+                    </Box>
+                </Stack>
             </Box>
 
-            <div style={{ height: 400, width: '100%' }}>
-                <DataGrid
-                    rows={data.map(v => ({ id: v, value: v }))}
-                    columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5]}
-                />
-            </div>
-
-            <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'}
-                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
-                </DialogTitle>
-                <DialogContent sx={{ mt: 1 }}>
-                    <TextField
-                        label="Valor"
-                        value={current.value}
-                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
-                        fullWidth
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">Salvar</Button>
-                </DialogActions>
-            </Dialog>
+            {loadingList ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                    <CircularProgress />
+                </Box>
+            ) : (
+                <Stack spacing={1}>
+                    {list.map(item => (
+                        <Box
+                            key={item.id}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                p: 1,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1
+                            }}
+                        >
+                            <Typography>{item.name}</Typography>
+                            <IconButton
+                                color="error"
+                                onClick={() => onDelete(item.id)}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </Box>
+                    ))}
+                </Stack>
+            )}
         </Box>
     );
 }

@@ -1,191 +1,258 @@
-// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
-import API_URL from '../config';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { object, string } from 'yup';
 import {
-  Box, TextField, Button, Typography,
-  FormControl, InputLabel, Select, MenuItem, Stack
+  Box,
+  TextField,
+  Button,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+  CircularProgress
 } from '@mui/material';
+import {
+  getCategories,
+  createAtendimento,
+  updateAtendimento
+} from '../services/api';
 
-export default function AtendimentoForm({ onAdd, token, atendente }) {
-  const today = new Date().toISOString().split('T')[0];
-  const [form, setForm] = useState({
-    dia: today,
-    horaInicio: '',
-    horaFim: '',
-    loja: '',
-    contato: '',
-    ocorrencia: ''
+const schema = object({
+  dia: string().required('Data é obrigatória'),
+  hora_inicio: string().required('Hora início é obrigatória'),
+  hora_fim: string().required('Hora fim é obrigatória'),
+  loja: string().required('Loja é obrigatória'),
+  contato: string().required('Contato é obrigatório'),
+  ocorrencia: string().required('Ocorrência é obrigatória')
+});
+
+export default function AtendimentoForm({
+  token,
+  atendente,
+  editing,
+  onSave,
+  onCancel
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [loading, setLoading] = useState(false);
+  const [lojas, setLojas] = useState([]);
+  const [contatos, setContatos] = useState([]);
+  const [ocorrencias, setOcorrencias] = useState([]);
+
+  const {
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors }
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      dia: today,
+      hora_inicio: '',
+      hora_fim: '',
+      loja: '',
+      contato: '',
+      ocorrencia: ''
+    }
   });
-  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // Carrega opções de categorias
   useEffect(() => {
-    fetch(`${API_URL}/api/categories`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => r.json())
-      .then(data =>
-        setOpts({
-          lojas: data.lojas,
-          contatos: data.contatos,
-          ocorrencias: data.ocorrencias
-        })
-      )
-      .catch(console.error);
+    const headers = { Authorization: `Bearer ${token}` };
+    getCategories('loja', token).then(r => setLojas(r.data));
+    getCategories('contato', token).then(r => setContatos(r.data));
+    getCategories('ocorrencia', token).then(r => setOcorrencias(r.data));
   }, [token]);
 
-  const handleChange = e => {
-    const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
-  };
+  useEffect(() => {
+    if (editing) {
+      reset({
+        dia: editing.dia.split('T')[0],
+        hora_inicio: editing.hora_inicio,
+        hora_fim: editing.hora_fim,
+        loja: editing.loja,
+        contato: editing.contato,
+        ocorrencia: editing.ocorrencia
+      });
+    } else {
+      reset({ dia: today, hora_inicio: '', hora_fim: '', loja: '', contato: '', ocorrencia: '' });
+    }
+  }, [editing, reset, today]);
 
-  const isValid =
-    form.dia &&
-    form.horaInicio &&
-    form.horaFim &&
-    form.loja &&
-    form.contato &&
-    form.ocorrencia;
-
-  const handleSubmit = async e => {
-    e.preventDefault();
-    if (!isValid) return;
-
-    // Monta o body explicitamente
-    const body = {
-      atendente,
-      dia: form.dia,
-      horaInicio: form.horaInicio,
-      horaFim: form.horaFim,
-      loja: form.loja,
-      contato: form.contato,
-      ocorrencia: form.ocorrencia
-    };
-
+  const onSubmit = async data => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/atendimentos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token
-        },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        // lê a mensagem de erro em texto bruto
-        const text = await res.text();
-        alert(`Erro ao cadastrar: ${res.status} ${text}`);
-        return;
+      const payload = {
+        atendente,
+        sector: editing?.sector || editing?.sector,
+        ...data
+      };
+      if (editing) {
+        await updateAtendimento(editing.id, payload, token);
+      } else {
+        await createAtendimento(payload, token);
       }
-      // sucesso → limpa e atualiza a lista
-      setForm({
-        dia: today,
-        horaInicio: '',
-        horaFim: '',
-        loja: '',
-        contato: '',
-        ocorrencia: ''
-      });
-      onAdd();
+      onSave();
+      reset();
     } catch {
-      alert('Erro de conexão ao servidor');
+      alert('Erro ao salvar atendimento');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit}>
+    <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+      <Typography variant="h6" gutterBottom>
+        {editing ? 'Editar Atendimento' : 'Novo Atendimento'}
+      </Typography>
       <Stack spacing={2}>
-        <Typography variant="h6" align="center">Novo Atendimento</Typography>
-        <TextField
-          label="Atendente"
-          value={atendente}
-          disabled
-          fullWidth
-        />
-        <TextField
-          label="Data"
+        <Controller
           name="dia"
-          type="date"
-          value={form.dia}
-          onChange={handleChange}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-          required
-        />
-        <TextField
-          label="Hora de Início"
-          name="horaInicio"
-          type="time"
-          value={form.horaInicio}
-          onChange={handleChange}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-          required
-        />
-        <TextField
-          label="Hora de Término"
-          name="horaFim"
-          type="time"
-          value={form.horaFim}
-          onChange={handleChange}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-          required
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="Data"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              error={!!errors.dia}
+              helperText={errors.dia?.message}
+              {...field}
+            />
+          )}
         />
 
-        <FormControl fullWidth required>
-          <InputLabel id="loja-label">Loja</InputLabel>
-          <Select
-            labelId="loja-label"
-            name="loja"
-            value={form.loja}
-            label="Loja"
-            onChange={handleChange}
-          >
-            {opts.lojas.map(loja => (
-              <MenuItem key={loja} value={loja}>{loja}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Controller
+          name="hora_inicio"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="Hora Início"
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              error={!!errors.hora_inicio}
+              helperText={errors.hora_inicio?.message}
+              {...field}
+            />
+          )}
+        />
 
-        <FormControl fullWidth required>
-          <InputLabel id="contato-label">Contato</InputLabel>
-          <Select
-            labelId="contato-label"
-            name="contato"
-            value={form.contato}
-            label="Contato"
-            onChange={handleChange}
-          >
-            {opts.contatos.map(c => (
-              <MenuItem key={c} value={c}>{c}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Controller
+          name="hora_fim"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="Hora Fim"
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              error={!!errors.hora_fim}
+              helperText={errors.hora_fim?.message}
+              {...field}
+            />
+          )}
+        />
 
-        <FormControl fullWidth required>
-          <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
-          <Select
-            labelId="ocorrencia-label"
-            name="ocorrencia"
-            value={form.ocorrencia}
-            label="Ocorrência"
-            onChange={handleChange}
-          >
-            {opts.ocorrencias.map(o => (
-              <MenuItem key={o} value={o}>{o}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Controller
+          name="loja"
+          control={control}
+          render={({ field }) => (
+            <FormControl error={!!errors.loja}>
+              <InputLabel>Loja</InputLabel>
+              <Select label="Loja" {...field}>
+                {lojas.map(l => (
+                  <MenuItem key={l.id} value={l.name}>
+                    {l.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.loja && (
+                <Typography variant="caption" color="error">
+                  {errors.loja.message}
+                </Typography>
+              )}
+            </FormControl>
+          )}
+        />
 
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={!isValid}
-          fullWidth
-        >
-          Cadastrar
-        </Button>
+        <Controller
+          name="contato"
+          control={control}
+          render={({ field }) => (
+            <FormControl error={!!errors.contato}>
+              <InputLabel>Contato</InputLabel>
+              <Select label="Contato" {...field}>
+                {contatos.map(c => (
+                  <MenuItem key={c.id} value={c.name}>
+                    {c.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.contato && (
+                <Typography variant="caption" color="error">
+                  {errors.contato.message}
+                </Typography>
+              )}
+            </FormControl>
+          )}
+        />
+
+        <Controller
+          name="ocorrencia"
+          control={control}
+          render={({ field }) => (
+            <FormControl error={!!errors.ocorrencia}>
+              <InputLabel>Ocorrência</InputLabel>
+              <Select label="Ocorrência" {...field}>
+                {ocorrencias.map(o => (
+                  <MenuItem key={o.id} value={o.name}>
+                    {o.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.ocorrencia && (
+                <Typography variant="caption" color="error">
+                  {errors.ocorrencia.message}
+                </Typography>
+              )}
+            </FormControl>
+          )}
+        />
+
+        <Box sx={{ position: 'relative', mt: 1 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            fullWidth
+          >
+            {editing ? 'Atualizar' : 'Cadastrar'}
+          </Button>
+          {loading && (
+            <CircularProgress
+              size={24}
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                mt: '-12px',
+                ml: '-12px'
+              }}
+            />
+          )}
+        </Box>
+
+        {editing && (
+          <Button
+            variant="outlined"
+            onClick={onCancel}
+            disabled={loading}
+            fullWidth
+          >
+            Cancelar
+          </Button>
+        )}
       </Stack>
     </Box>
   );
