@@ -1,84 +1,71 @@
-import React, { useEffect, useState } from 'react';
-import AtendimentoForm from './AtendimentoForm';
+// frontend/src/components/AtendimentoList.js
+import React from 'react';
+import API_URL from '../config';
+import { DataGrid } from '@mui/x-data-grid';
+import { IconButton, Box } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-function AtendimentoList({ apiUrl, token }) {
-  const [atendimentos, setAtendimentos] = useState([]);
-  const [editing, setEditing] = useState(null);
-
-  const fetchAtendimentos = async () => {
-    const res = await fetch(`${apiUrl}/atendimentos`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    setAtendimentos(await res.json());
-  };
-
-  useEffect(() => { fetchAtendimentos(); }, []);
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Tem certeza que deseja excluir?')) return;
-    await fetch(`${apiUrl}/atendimentos/${id}`, {
+export default function AtendimentoList({ atendimentos, token, onDelete }) {
+  const handleDelete = id =>
+    fetch(`${API_URL}/api/atendimentos/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    fetchAtendimentos();
-  };
+      headers: { Authorization: 'Bearer ' + token }
+    }).then(onDelete);
 
-  const handleEdit = (item) => setEditing(item);
+  const columns = [
+    { field: 'atendente', headerName: 'Atendente', flex: 1, minWidth: 120 },
+    { field: 'setor', headerName: 'Setor', flex: 1, minWidth: 100 },
 
-  const handleFormClose = () => setEditing(null);
+    {
+      field: 'dia',
+      headerName: 'Data',
+      flex: 1,
+      minWidth: 120,
+      sortable: true,
+      renderCell: ({ row }) => {
+        const raw = row.dia;
+        if (!raw) return '';
+        // se vier com hora (ISO), limpa tudo após 'T'
+        const dateOnly = String(raw).split('T')[0];
+        const [y, m, d] = dateOnly.split('-');
+        return `${d}/${m}/${y}`;
+      }
+    },
 
-  const handleFormSave = () => {
-    setEditing(null);
-    fetchAtendimentos();
-  };
+    { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
+    { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
+    { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
+    { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
+    { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },
+    { field: 'observacao', headerName: 'Observação', flex: 1, minWidth: 120, sortable: false },
+
+    {
+      field: 'actions',
+      headerName: 'Ações',
+      flex: 0.5,
+      sortable: false,
+      renderCell: params => (
+        <IconButton onClick={() => handleDelete(params.row.id)}>
+          <DeleteIcon color="error" />
+        </IconButton>
+      )
+    }
+  ];
 
   return (
-    <div>
-      <h2>Lista de Atendimentos</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Atendente</th>
-            <th>Setor</th>
-            <th>Dia</th>
-            <th>Hora Início</th>
-            <th>Hora Fim</th>
-            <th>Loja</th>
-            <th>Contato</th>
-            <th>Ocorrência</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {atendimentos.map((item) => (
-            <tr key={item.id}>
-              <td>{item.atendente}</td>
-              <td>{item.setor}</td>
-              <td>{item.dia}</td>
-              <td>{item.hora_inicio}</td>
-              <td>{item.hora_fim}</td>
-              <td>{item.loja}</td>
-              <td>{item.contato}</td>
-              <td>{item.ocorrencia}</td>
-              <td>
-                <button onClick={() => handleEdit(item)}>Editar</button>
-                <button onClick={() => handleDelete(item.id)}>Excluir</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {editing &&
-        <AtendimentoForm
-          apiUrl={apiUrl}
-          token={token}
-          initialData={editing}
-          onClose={handleFormClose}
-          onSave={handleFormSave}
-        />}
-    </div>
+    <Box sx={{ width: '100%' }}>
+      <DataGrid
+        rows={atendimentos}
+        columns={columns}
+        getRowId={row => row.id}
+        pageSize={5}
+        rowsPerPageOptions={[5, 10, 25, 100]}
+        disableSelectionOnClick
+        autoHeight
+        initialState={{
+          sorting: { sortModel: [{ field: 'dia', sort: 'asc' }] }
+        }}
+      />
+    </Box>
   );
 }
-
-export default AtendimentoList;

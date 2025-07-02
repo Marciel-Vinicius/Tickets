@@ -11,7 +11,7 @@ export const lightTheme = createTheme({
         fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     },
 });
-// Criar
+
 export const darkTheme = createTheme({
     palette: {
         mode: 'dark',

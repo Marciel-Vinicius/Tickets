@@ -19,7 +19,7 @@ app.use(bodyParser.json());
 
 // Públicos
 app.use('/api/auth', authRouter);
-// Criar
+
 // Protegidos
 app.use('/api/users', authenticateToken, userRouter);
 app.use('/api/categories', authenticateToken, categoryRouter);

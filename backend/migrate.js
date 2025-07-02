@@ -3,15 +3,15 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 async function migrate() {
-  // Conexão usando DATABASE_URL do .env
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+    // Conexão usando DATABASE_URL do .env
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
 
-  try {
-    // 1) Usuários
-    await pool.query(`
+    try {
+        // 1) Usuários
+        await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
         password TEXT NOT NULL,
@@ -19,8 +19,8 @@ async function migrate() {
       );
     `);
 
-    // 2) Atendimentos
-    await pool.query(`
+        // 2) Atendimentos
+        await pool.query(`
       CREATE TABLE IF NOT EXISTS atendimentos (
         id           UUID PRIMARY KEY,
         atendente    TEXT NOT NULL,
@@ -34,34 +34,33 @@ async function migrate() {
       );
     `);
 
-    // 3) Lojas
-    await pool.query(`
+        // 3) Lojas
+        await pool.query(`
       CREATE TABLE IF NOT EXISTS lojas (
         value TEXT PRIMARY KEY
       );
     `);
 
-    // 4) Contatos
-    await pool.query(`
+        // 4) Contatos
+        await pool.query(`
       CREATE TABLE IF NOT EXISTS contatos (
         value TEXT PRIMARY KEY
       );
     `);
 
-    // 5) Ocorrências
-    await pool.query(`
+        // 5) Ocorrências
+        await pool.query(`
       CREATE TABLE IF NOT EXISTS ocorrencias (
         value TEXT PRIMARY KEY
       );
     `);
 
-    console.log('✔️  Migração concluída com sucesso!');
-  } catch (err) {
-    console.error('❌ Erro na migração:', err);
-  } finally {
-    await pool.end();
-  }
+        console.log('✔️  Migração concluída com sucesso!');
+    } catch (err) {
+        console.error('❌ Erro na migração:', err);
+    } finally {
+        await pool.end();
+    }
 }
 
 migrate();
-// Criar

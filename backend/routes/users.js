@@ -32,4 +32,3 @@ router.put('/:username', async (req, res) => {
 });
 
 module.exports = router;
-// Criar

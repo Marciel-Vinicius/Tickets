@@ -12,7 +12,7 @@ export default function Register({ showLogin }) {
   const [password, setPassword] = useState('');
   const [sector, setSector] = useState('');
   const [message, setMessage] = useState('');
-  // Criar
+
   const handleSubmit = e => {
     e.preventDefault();
     fetch(`${API_URL}/api/auth/register`, {

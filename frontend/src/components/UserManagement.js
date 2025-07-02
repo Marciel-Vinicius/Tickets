@@ -40,7 +40,7 @@ export default function UserManagement({ token }) {
             .then(() => { fetchUsers(); setOpen(false); })
             .catch(() => alert('Erro ao salvar usuário'));
     };
-    // Criar
+
     const columns = [
         { field: 'username', headerName: 'Usuário', flex: 1 },
         { field: 'sector', headerName: 'Setor', flex: 1 },
