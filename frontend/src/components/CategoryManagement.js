@@ -1,164 +1,122 @@
+// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { object, string } from 'yup';
+import API_URL from '../config';
 import {
-    Box,
-    TextField,
-    Button,
-    Select,
-    MenuItem,
-    InputLabel,
-    FormControl,
-    IconButton,
-    Stack,
-    Typography,
-    CircularProgress
+    Box, Typography, Tabs, Tab,
+    Button, Dialog, DialogTitle,
+    DialogContent, DialogActions,
+    TextField, IconButton
 } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { getCategories, createCategory, deleteCategory } from '../services/api';
-
-const schema = object({
-    type: string().required('Tipo é obrigatório'),
-    name: string().required('Nome é obrigatório')
-});
 
 export default function CategoryManagement({ token }) {
-    const [list, setList] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [submitLoading, setSubmitLoading] = useState(false);
+    const [tab, setTab] = useState('lojas');
+    const [data, setData] = useState([]);
+    const [open, setOpen] = useState(false);
+    const [current, setCurrent] = useState({ oldValue: '', value: '' });
 
-    const { handleSubmit, control, reset, watch, formState: { errors } } = useForm({
-        resolver: yupResolver(schema),
-        defaultValues: { type: 'loja', name: '' }
-    });
+    const fetchData = () => {
+        fetch(`${API_URL}/api/categories`, {
+            headers: { Authorization: 'Bearer ' + token }
+        })
+            .then(r => r.json())
+            .then(obj => setData(obj[tab]))
+            .catch(console.error);
+    };
+    useEffect(fetchData, [tab]);
 
-    const currentType = watch('type');
-
-    const fetchList = async type => {
-        setLoading(true);
-        try {
-            const res = await getCategories(type, token);
-            setList(Array.isArray(res.data) ? res.data : []);
-        } catch {
-            setList([]);
-            console.error(`Erro ao carregar categorias (${type})`);
-        } finally {
-            setLoading(false);
-        }
+    const handleChangeTab = (_, newVal) => setTab(newVal);
+    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
+    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
+    const handleDelete = v => {
+        if (!window.confirm('Confirma exclusão?')) return;
+        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
+            method: 'DELETE',
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(fetchData);
     };
 
-    useEffect(() => {
-        fetchList(currentType);
-    }, [currentType]);
-
-    const onSubmit = async data => {
-        setSubmitLoading(true);
-        try {
-            await createCategory(data, token);
-            fetchList(data.type);
-            reset({ type: data.type, name: '' });
-        } catch {
-            alert('Erro ao criar categoria');
-        } finally {
-            setSubmitLoading(false);
-        }
+    const handleSave = () => {
+        const isEdit = Boolean(current.oldValue);
+        const url = isEdit
+            ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
+            : `${API_URL}/api/categories/${tab}`;
+        const method = isEdit ? 'PUT' : 'POST';
+        fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
+            body: JSON.stringify({ value: current.value })
+        }).then(() => {
+            setOpen(false);
+            fetchData();
+        });
     };
 
-    const onDelete = async id => {
-        if (!window.confirm('Deseja excluir?')) return;
-        try {
-            await deleteCategory(id, token);
-            fetchList(currentType);
-        } catch {
-            alert('Erro ao excluir');
+    const columns = [
+        { field: 'value', headerName: 'Valor', flex: 1 },
+        {
+            field: 'actions',
+            headerName: 'Ações',
+            flex: 0.5,
+            sortable: false,
+            renderCell: params => (
+                <>
+                    <IconButton onClick={() => handleEdit(params.row.value)}>
+                        <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(params.row.value)}>
+                        <DeleteIcon color="error" />
+                    </IconButton>
+                </>
+            )
         }
-    };
+    ];
 
     return (
-        <Box sx={{ maxWidth: 400, mx: 'auto' }}>
-            <Typography variant="h6" gutterBottom>
-                Gerenciar Categorias
-            </Typography>
+        <Box>
+            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
+            <Tabs value={tab} onChange={handleChangeTab}>
+                <Tab label="Lojas" value="lojas" />
+                <Tab label="Contatos" value="contatos" />
+                <Tab label="Ocorrências" value="ocorrencias" />
+            </Tabs>
 
-            {/* Form de Criação */}
-            <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                    <Controller
-                        name="type"
-                        control={control}
-                        render={({ field }) => (
-                            <FormControl fullWidth error={!!errors.type}>
-                                <InputLabel>Tipo</InputLabel>
-                                <Select {...field} label="Tipo">
-                                    <MenuItem value="loja">Loja</MenuItem>
-                                    <MenuItem value="contato">Contato</MenuItem>
-                                    <MenuItem value="ocorrencia">Ocorrência</MenuItem>
-                                </Select>
-                                {errors.type && <Typography color="error">{errors.type.message}</Typography>}
-                            </FormControl>
-                        )}
-                    />
-                    <Controller
-                        name="name"
-                        control={control}
-                        render={({ field }) => (
-                            <TextField
-                                fullWidth
-                                label="Nome"
-                                error={!!errors.name}
-                                helperText={errors.name?.message}
-                                {...field}
-                            />
-                        )}
-                    />
-                    <Box sx={{ position: 'relative' }}>
-                        <Button type="submit" variant="contained" disabled={submitLoading}>
-                            Adicionar
-                        </Button>
-                        {submitLoading && (
-                            <CircularProgress
-                                size={24}
-                                sx={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)'
-                                }}
-                            />
-                        )}
-                    </Box>
-                </Stack>
+            <Box sx={{ mt: 2, mb: 2 }}>
+                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
             </Box>
 
-            {/* Lista de Categorias */}
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <CircularProgress />
-                </Box>
-            ) : (
-                <Stack spacing={1}>
-                    {(Array.isArray(list) ? list : []).map(item => (
-                        <Box
-                            key={item.id}
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                p: 1,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 1
-                            }}
-                        >
-                            <Typography>{item.name}</Typography>
-                            <IconButton color="error" onClick={() => onDelete(item.id)}>
-                                <DeleteIcon />
-                            </IconButton>
-                        </Box>
-                    ))}
-                </Stack>
-            )}
+            <div style={{ height: 400, width: '100%' }}>
+                <DataGrid
+                    rows={data.map(v => ({ id: v, value: v }))}
+                    columns={columns}
+                    pageSize={5}
+                    rowsPerPageOptions={[5]}
+                />
+            </div>
+
+            <Dialog open={open} onClose={() => setOpen(false)}>
+                <DialogTitle>
+                    {current.oldValue ? 'Editar' : 'Adicionar'}
+                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
+                </DialogTitle>
+                <DialogContent sx={{ mt: 1 }}>
+                    <TextField
+                        label="Valor"
+                        value={current.value}
+                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
+                        fullWidth
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSave} variant="contained">Salvar</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

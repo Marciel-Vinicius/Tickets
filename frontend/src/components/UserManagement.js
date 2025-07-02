@@ -1,181 +1,104 @@
+// frontend/src/components/UserManagement.js
 import React, { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { object, string } from 'yup';
+import API_URL from '../config';
 import {
-    Box,
-    Typography,
-    Stack,
-    TextField,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Button,
-    IconButton,
-    CircularProgress
+    Box, Typography, IconButton,
+    Dialog, DialogTitle, DialogContent,
+    DialogActions, TextField, Button,
+    FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import { getUsers, createUser, deleteUser } from '../services/api';
-
-const schema = object({
-    username: string().required('Usuário é obrigatório'),
-    password: string().required('Senha é obrigatória'),
-    sector: string().required('Setor é obrigatório')
-});
+import { DataGrid } from '@mui/x-data-grid';
+import EditIcon from '@mui/icons-material/Edit';
 
 export default function UserManagement({ token }) {
     const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [submitLoading, setSubmitLoading] = useState(false);
+    const [open, setOpen] = useState(false);
+    const [current, setCurrent] = useState({ username: '', sector: '', password: '' });
 
-    const {
-        handleSubmit,
-        control,
-        reset,
-        formState: { errors }
-    } = useForm({
-        resolver: yupResolver(schema),
-        defaultValues: { username: '', password: '', sector: 'DEV' }
-    });
+    const fetchUsers = () => {
+        fetch(`${API_URL}/api/users`, {
+            headers: { Authorization: 'Bearer ' + token }
+        })
+            .then(r => r.json())
+            .then(setUsers)
+            .catch(console.error);
+    };
+    useEffect(fetchUsers, []);
 
-    const fetchUsers = async () => {
-        setLoading(true);
-        try {
-            const res = await getUsers(token);
-            setUsers(Array.isArray(res.data) ? res.data : []);
-        } catch {
-            setUsers([]);
-            console.error('Erro ao carregar usuários');
-        } finally {
-            setLoading(false);
-        }
+    const handleEdit = u => { setCurrent({ username: u.username, sector: u.sector, password: '' }); setOpen(true); };
+    const handleClose = () => setOpen(false);
+    const handleSave = () => {
+        fetch(`${API_URL}/api/users/${current.username}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
+            body: JSON.stringify({ sector: current.sector, password: current.password || undefined })
+        })
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(() => { fetchUsers(); setOpen(false); })
+            .catch(() => alert('Erro ao salvar usuário'));
     };
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
-    const onSubmit = async data => {
-        setSubmitLoading(true);
-        try {
-            await createUser(data, token);
-            fetchUsers();
-            reset({ username: '', password: '', sector: data.sector });
-        } catch {
-            alert('Erro ao criar usuário');
-        } finally {
-            setSubmitLoading(false);
+    const columns = [
+        { field: 'username', headerName: 'Usuário', flex: 1 },
+        { field: 'sector', headerName: 'Setor', flex: 1 },
+        {
+            field: 'actions',
+            headerName: 'Ações',
+            flex: 0.5,
+            sortable: false,
+            renderCell: params => (
+                <IconButton onClick={() => handleEdit(params.row)}>
+                    <EditIcon />
+                </IconButton>
+            )
         }
-    };
-
-    const onDelete = async id => {
-        if (!window.confirm('Deseja excluir este usuário?')) return;
-        try {
-            await deleteUser(id, token);
-            fetchUsers();
-        } catch {
-            alert('Erro ao excluir usuário');
-        }
-    };
+    ];
 
     return (
-        <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-            <Typography variant="h6" gutterBottom>
-                Gerenciar Usuários
-            </Typography>
+        <Box>
+            <Typography variant="h5" gutterBottom>Gerenciar Usuários</Typography>
+            <div style={{ height: 400, width: '100%' }}>
+                <DataGrid
+                    rows={users}
+                    columns={columns}
+                    getRowId={r => r.username}
+                    pageSize={5}
+                    rowsPerPageOptions={[5]}
+                />
+            </div>
 
-            {/* Formulário */}
-            <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-                <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                    <Controller
-                        name="username"
-                        control={control}
-                        render={({ field }) => (
-                            <TextField
-                                label="Usuário"
-                                error={!!errors.username}
-                                helperText={errors.username?.message}
-                                {...field}
-                            />
-                        )}
-                    />
-                    <Controller
-                        name="password"
-                        control={control}
-                        render={({ field }) => (
-                            <TextField
-                                label="Senha"
-                                type="password"
-                                error={!!errors.password}
-                                helperText={errors.password?.message}
-                                {...field}
-                            />
-                        )}
-                    />
-                    <Controller
-                        name="sector"
-                        control={control}
-                        render={({ field }) => (
-                            <FormControl>
-                                <InputLabel>Setor</InputLabel>
-                                <Select {...field} label="Setor">
-                                    <MenuItem value="DEV">DEV</MenuItem>
-                                    <MenuItem value="SAF">SAF</MenuItem>
-                                </Select>
-                            </FormControl>
-                        )}
-                    />
-
-                    <Box sx={{ position: 'relative' }}>
-                        <Button type="submit" variant="contained" disabled={submitLoading}>
-                            Adicionar
-                        </Button>
-                        {submitLoading && (
-                            <CircularProgress
-                                size={24}
-                                sx={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)'
-                                }}
-                            />
-                        )}
-                    </Box>
-                </Stack>
-            </Box>
-
-            {/* Lista */}
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <CircularProgress />
-                </Box>
-            ) : (
-                <Stack spacing={1}>
-                    {(Array.isArray(users) ? users : []).map(u => (
-                        <Box
-                            key={u.id}
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                p: 1,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 1
-                            }}
+            <Dialog open={open} onClose={handleClose}>
+                <DialogTitle>Editar Usuário</DialogTitle>
+                <DialogContent sx={{ display: 'grid', gap: 2, width: 300, mt: 1 }}>
+                    <TextField label="Usuário" value={current.username} disabled fullWidth />
+                    <FormControl fullWidth>
+                        <InputLabel id="sector-label">Setor</InputLabel>
+                        <Select
+                            labelId="sector-label"
+                            value={current.sector}
+                            label="Setor"
+                            onChange={e => setCurrent(p => ({ ...p, sector: e.target.value }))}
                         >
-                            <Typography>
-                                {u.username} — {u.sector}
-                            </Typography>
-                            <IconButton color="error" onClick={() => onDelete(u.id)}>
-                                <DeleteIcon />
-                            </IconButton>
-                        </Box>
-                    ))}
-                </Stack>
-            )}
+                            <MenuItem value="DEV">DEV</MenuItem>
+                            <MenuItem value="SAF">SAF</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <TextField
+                        label="Nova senha"
+                        type="password"
+                        value={current.password}
+                        onChange={e => setCurrent(p => ({ ...p, password: e.target.value }))}
+                        fullWidth
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose}>Cancelar</Button>
+                    <Button onClick={handleSave} variant="contained">Salvar</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
