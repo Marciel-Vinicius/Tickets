@@ -1,4 +1,3 @@
-// src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -39,7 +38,7 @@ export default function AtendimentoForm({
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const [loading, setLoading] = useState(false);
-  const [lojas, setLojas] = useState([]);             // garantido como array
+  const [lojas, setLojas] = useState([]);
   const [contatos, setContatos] = useState([]);
   const [ocorrencias, setOcorrencias] = useState([]);
 
@@ -60,40 +59,20 @@ export default function AtendimentoForm({
     }
   });
 
-  // carrega as categorias
   useEffect(() => {
-    const headers = { Authorization: `Bearer ${token}` };
-
     getCategories('loja', token)
-      .then(res => {
-        // espera que res.data seja um array
-        setLojas(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(() => {
-        setLojas([]);
-        console.error('Erro ao carregar lojas');
-      });
+      .then(res => setLojas(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setLojas([]));
 
     getCategories('contato', token)
-      .then(res => {
-        setContatos(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(() => {
-        setContatos([]);
-        console.error('Erro ao carregar contatos');
-      });
+      .then(res => setContatos(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setContatos([]));
 
     getCategories('ocorrencia', token)
-      .then(res => {
-        setOcorrencias(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(() => {
-        setOcorrencias([]);
-        console.error('Erro ao carregar ocorrências');
-      });
+      .then(res => setOcorrencias(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setOcorrencias([]));
   }, [token]);
 
-  // quando começar a editar, pré-preenche o form
   useEffect(() => {
     if (editing) {
       reset({
@@ -105,25 +84,14 @@ export default function AtendimentoForm({
         ocorrencia: editing.ocorrencia || ''
       });
     } else {
-      reset({
-        dia: today,
-        hora_inicio: '',
-        hora_fim: '',
-        loja: '',
-        contato: '',
-        ocorrencia: ''
-      });
+      reset({ dia: today, hora_inicio: '', hora_fim: '', loja: '', contato: '', ocorrencia: '' });
     }
   }, [editing, reset, today]);
 
   const onSubmit = async data => {
     setLoading(true);
     try {
-      const payload = {
-        atendente,
-        sector: editing?.sector || undefined,
-        ...data
-      };
+      const payload = { atendente, ...data };
       if (editing) {
         await updateAtendimento(editing.id, payload, token);
       } else {
@@ -131,8 +99,7 @@ export default function AtendimentoForm({
       }
       onSave();
       reset();
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert('Erro ao salvar atendimento');
     } finally {
       setLoading(false);
@@ -145,6 +112,7 @@ export default function AtendimentoForm({
         {editing ? 'Editar Atendimento' : 'Novo Atendimento'}
       </Typography>
       <Stack spacing={2}>
+        {/* Data */}
         <Controller
           name="dia"
           control={control}
@@ -155,11 +123,13 @@ export default function AtendimentoForm({
               InputLabelProps={{ shrink: true }}
               error={!!errors.dia}
               helperText={errors.dia?.message}
+              fullWidth
               {...field}
             />
           )}
         />
 
+        {/* Hora Início */}
         <Controller
           name="hora_inicio"
           control={control}
@@ -170,11 +140,13 @@ export default function AtendimentoForm({
               InputLabelProps={{ shrink: true }}
               error={!!errors.hora_inicio}
               helperText={errors.hora_inicio?.message}
+              fullWidth
               {...field}
             />
           )}
         />
 
+        {/* Hora Fim */}
         <Controller
           name="hora_fim"
           control={control}
@@ -185,16 +157,18 @@ export default function AtendimentoForm({
               InputLabelProps={{ shrink: true }}
               error={!!errors.hora_fim}
               helperText={errors.hora_fim?.message}
+              fullWidth
               {...field}
             />
           )}
         />
 
+        {/* Loja */}
         <Controller
           name="loja"
           control={control}
           render={({ field }) => (
-            <FormControl error={!!errors.loja}>
+            <FormControl fullWidth error={!!errors.loja}>
               <InputLabel>Loja</InputLabel>
               <Select label="Loja" {...field}>
                 {(lojas || []).map(l => (
@@ -212,11 +186,12 @@ export default function AtendimentoForm({
           )}
         />
 
+        {/* Contato */}
         <Controller
           name="contato"
           control={control}
           render={({ field }) => (
-            <FormControl error={!!errors.contato}>
+            <FormControl fullWidth error={!!errors.contato}>
               <InputLabel>Contato</InputLabel>
               <Select label="Contato" {...field}>
                 {(contatos || []).map(c => (
@@ -234,11 +209,12 @@ export default function AtendimentoForm({
           )}
         />
 
+        {/* Ocorrência */}
         <Controller
           name="ocorrencia"
           control={control}
           render={({ field }) => (
-            <FormControl error={!!errors.ocorrencia}>
+            <FormControl fullWidth error={!!errors.ocorrencia}>
               <InputLabel>Ocorrência</InputLabel>
               <Select label="Ocorrência" {...field}>
                 {(ocorrencias || []).map(o => (
@@ -256,13 +232,9 @@ export default function AtendimentoForm({
           )}
         />
 
+        {/* Botões */}
         <Box sx={{ position: 'relative', mt: 1 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            disabled={loading}
-          >
+          <Button variant="contained" type="submit" fullWidth disabled={loading}>
             {editing ? 'Atualizar' : 'Cadastrar'}
           </Button>
           {loading && (
@@ -279,12 +251,7 @@ export default function AtendimentoForm({
         </Box>
 
         {editing && (
-          <Button
-            variant="outlined"
-            onClick={onCancel}
-            disabled={loading}
-            fullWidth
-          >
+          <Button variant="outlined" fullWidth onClick={onCancel} disabled={loading}>
             Cancelar
           </Button>
         )}

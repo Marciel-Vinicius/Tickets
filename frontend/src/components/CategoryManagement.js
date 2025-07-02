@@ -16,11 +16,7 @@ import {
     CircularProgress
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import {
-    getCategories,
-    createCategory,
-    deleteCategory
-} from '../services/api';
+import { getCategories, createCategory, deleteCategory } from '../services/api';
 
 const schema = object({
     type: string().required('Tipo é obrigatório'),
@@ -28,35 +24,33 @@ const schema = object({
 });
 
 export default function CategoryManagement({ token }) {
-    const [loadingList, setLoadingList] = useState(false);
     const [list, setList] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [submitLoading, setSubmitLoading] = useState(false);
 
-    const {
-        handleSubmit,
-        control,
-        reset,
-        formState: { errors }
-    } = useForm({
+    const { handleSubmit, control, reset, watch, formState: { errors } } = useForm({
         resolver: yupResolver(schema),
         defaultValues: { type: 'loja', name: '' }
     });
 
+    const currentType = watch('type');
+
     const fetchList = async type => {
-        setLoadingList(true);
+        setLoading(true);
         try {
             const res = await getCategories(type, token);
-            setList(res.data);
+            setList(Array.isArray(res.data) ? res.data : []);
         } catch {
-            alert('Erro ao carregar categorias');
+            setList([]);
+            console.error(`Erro ao carregar categorias (${type})`);
         } finally {
-            setLoadingList(false);
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchList('loja');
-    }, []); // inicial carrega lojas
+        fetchList(currentType);
+    }, [currentType]);
 
     const onSubmit = async data => {
         setSubmitLoading(true);
@@ -71,16 +65,11 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    const handleTypeChange = e => {
-        const t = e.target.value;
-        reset({ type: t, name: '' });
-        fetchList(t);
-    };
-
     const onDelete = async id => {
+        if (!window.confirm('Deseja excluir?')) return;
         try {
             await deleteCategory(id, token);
-            fetchList(control._formValues.type);
+            fetchList(currentType);
         } catch {
             alert('Erro ao excluir');
         }
@@ -92,38 +81,31 @@ export default function CategoryManagement({ token }) {
                 Gerenciar Categorias
             </Typography>
 
-            <Controller
-                name="type"
-                control={control}
-                render={({ field }) => (
-                    <FormControl fullWidth sx={{ mb: 2 }} error={!!errors.type}>
-                        <InputLabel>Tipo</InputLabel>
-                        <Select label="Tipo" {...field} onChange={e => {
-                            field.onChange(e);
-                            handleTypeChange(e);
-                        }}>
-                            <MenuItem value="loja">Loja</MenuItem>
-                            <MenuItem value="contato">Contato</MenuItem>
-                            <MenuItem value="ocorrencia">Ocorrência</MenuItem>
-                        </Select>
-                        {errors.type && (
-                            <Typography variant="caption" color="error">
-                                {errors.type.message}
-                            </Typography>
-                        )}
-                    </FormControl>
-                )}
-            />
-
+            {/* Form de Criação */}
             <Box component="form" onSubmit={handleSubmit(onSubmit)}>
                 <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                    <Controller
+                        name="type"
+                        control={control}
+                        render={({ field }) => (
+                            <FormControl fullWidth error={!!errors.type}>
+                                <InputLabel>Tipo</InputLabel>
+                                <Select {...field} label="Tipo">
+                                    <MenuItem value="loja">Loja</MenuItem>
+                                    <MenuItem value="contato">Contato</MenuItem>
+                                    <MenuItem value="ocorrencia">Ocorrência</MenuItem>
+                                </Select>
+                                {errors.type && <Typography color="error">{errors.type.message}</Typography>}
+                            </FormControl>
+                        )}
+                    />
                     <Controller
                         name="name"
                         control={control}
                         render={({ field }) => (
                             <TextField
                                 fullWidth
-                                label="Novo nome"
+                                label="Nome"
                                 error={!!errors.name}
                                 helperText={errors.name?.message}
                                 {...field}
@@ -131,11 +113,7 @@ export default function CategoryManagement({ token }) {
                         )}
                     />
                     <Box sx={{ position: 'relative' }}>
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            disabled={submitLoading}
-                        >
+                        <Button type="submit" variant="contained" disabled={submitLoading}>
                             Adicionar
                         </Button>
                         {submitLoading && (
@@ -145,8 +123,7 @@ export default function CategoryManagement({ token }) {
                                     position: 'absolute',
                                     top: '50%',
                                     left: '50%',
-                                    mt: '-12px',
-                                    ml: '-12px'
+                                    transform: 'translate(-50%, -50%)'
                                 }}
                             />
                         )}
@@ -154,13 +131,14 @@ export default function CategoryManagement({ token }) {
                 </Stack>
             </Box>
 
-            {loadingList ? (
+            {/* Lista de Categorias */}
+            {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                     <CircularProgress />
                 </Box>
             ) : (
                 <Stack spacing={1}>
-                    {list.map(item => (
+                    {(Array.isArray(list) ? list : []).map(item => (
                         <Box
                             key={item.id}
                             sx={{
@@ -174,10 +152,7 @@ export default function CategoryManagement({ token }) {
                             }}
                         >
                             <Typography>{item.name}</Typography>
-                            <IconButton
-                                color="error"
-                                onClick={() => onDelete(item.id)}
-                            >
+                            <IconButton color="error" onClick={() => onDelete(item.id)}>
                                 <DeleteIcon />
                             </IconButton>
                         </Box>
