@@ -1,9 +1,23 @@
+// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
-  CssBaseline, AppBar, Toolbar, Typography,
-  IconButton, Box, Divider, List, ListItem,
-  ListItemButton, ListItemIcon, ListItemText,
-  Drawer, Container, TextField, Button, Paper,
+  CssBaseline,
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Box,
+  Divider,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Drawer,
+  Container,
+  TextField,
+  Button,
+  Paper,
   Grid
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
@@ -46,6 +60,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
+  // theme mode
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -54,6 +69,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
+  // auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -88,7 +104,9 @@ export default function App() {
     setMobileOpen(false);
   };
 
+  // atendimentos data
   const [atendimentos, setAtendimentos] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
   const [reportDate, setReportDate] = useState('');
 
   const fetchAtendimentos = () => {
@@ -98,43 +116,28 @@ export default function App() {
     })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(raw => {
+        // sort by date asc
         const sorted = [...raw].sort(
           (a, b) => new Date(a.dia) - new Date(b.dia)
         );
-        const saturdayCount = {};
-        const processed = sorted.map(item => {
-          const [Y, M, D] = item.dia.split('-').map(n => parseInt(n, 10));
-          const dt = new Date(Y, M - 1, D);
-          saturdayCount[item.atendente] = saturdayCount[item.atendente] || 0;
-          let observacao = '';
-          if (dt.getDay() === 6) {
-            saturdayCount[item.atendente]++;
-            if (saturdayCount[item.atendente] === 4) {
-              observacao = '4 plantão';
-              saturdayCount[item.atendente] = 0;
-            }
-          }
-          return {
-            id: item.id,
-            atendente: item.atendente,
-            setor: item.setor,
-            dia: item.dia,
-            horaInicio: item.hora_inicio,
-            horaFim: item.hora_fim,
-            loja: item.loja,
-            contato: item.contato,
-            ocorrencia: item.ocorrencia,
-            observacao
-          };
-        });
-        setAtendimentos(processed);
+        // apply 4-plantao logic if needed...
+        setAtendimentos(sorted);
       })
       .catch(err => {
         console.error(err);
         alert('Falha ao carregar atendimentos.');
       });
   };
-  useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
+  useEffect(() => {
+    if (token) {
+      fetchAtendimentos();
+    }
+  }, [token]);
+
+  const handleSave = () => {
+    setEditingItem(null);
+    fetchAtendimentos();
+  };
 
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
@@ -153,9 +156,12 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
+  // drawer menu
   const drawer = (
     <div>
-      <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
+      <Toolbar>
+        <Typography variant="h6">Menu</Typography>
+      </Toolbar>
       <Divider />
       <List>
         <ListItem disablePadding>
@@ -205,13 +211,14 @@ export default function App() {
     </div>
   );
 
-  const handleDrawerToggle = () => setMobileOpen(o => !o);
+  const handleDrawerToggle = () => {
+    setMobileOpen(open => !open);
+  };
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
-
         <AppBar
           position="fixed"
           sx={{
@@ -277,7 +284,6 @@ export default function App() {
           }}
         >
           <Toolbar />
-
           {!user ? (
             <Container
               maxWidth="xs"
@@ -302,7 +308,9 @@ export default function App() {
                       <AtendimentoForm
                         token={token}
                         atendente={user.username}
-                        onAdd={fetchAtendimentos}
+                        editing={editingItem}
+                        onSave={handleSave}
+                        onCancel={() => setEditingItem(null)}
                       />
                     </Paper>
                   </Grid>
@@ -335,21 +343,25 @@ export default function App() {
                         atendimentos={atendimentos}
                         token={token}
                         onDelete={fetchAtendimentos}
+                        onEdit={item => setEditingItem(item)}
                       />
                     </Paper>
                   </Grid>
                 </Grid>
               )}
+
               {view === 'categories' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <CategoryManagement token={token} />
                 </Paper>
               )}
+
               {view === 'users' && user.sector === 'DEV' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <UserManagement token={token} />
                 </Paper>
               )}
+
               {view === 'reports' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <ReportDashboard token={token} />

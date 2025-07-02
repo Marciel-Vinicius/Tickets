@@ -6,102 +6,84 @@ import {
   FormControl, InputLabel, Select, MenuItem, Stack
 } from '@mui/material';
 
-export default function AtendimentoForm({ onAdd, token, atendente }) {
+export default function AtendimentoForm({
+  token,
+  atendente,
+  editing,         // o atendimento que está sendo editado (objeto) ou null
+  onSave,          // callback (novo ou atualizado)=>void
+  onCancel         // callback para sair do modo edição
+}) {
   const today = new Date().toISOString().split('T')[0];
-  const [form, setForm] = useState({
+  const initial = {
     dia: today,
-    horaInicio: '',
-    horaFim: '',
+    hora_inicio: '',
+    hora_fim: '',
     loja: '',
     contato: '',
     ocorrencia: ''
-  });
-  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
+  };
 
-  // Carrega opções de categorias
+  const [form, setForm] = useState(initial);
+
+  // quando entrar em modo edição, preenche o form
   useEffect(() => {
-    fetch(`${API_URL}/api/categories`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => r.json())
-      .then(data =>
-        setOpts({
-          lojas: data.lojas,
-          contatos: data.contatos,
-          ocorrencias: data.ocorrencias
-        })
-      )
-      .catch(console.error);
-  }, [token]);
+    if (editing) {
+      setForm({
+        dia: editing.dia.split('T')[0],
+        hora_inicio: editing.hora_inicio,
+        hora_fim: editing.hora_fim,
+        loja: editing.loja,
+        contato: editing.contato,
+        ocorrencia: editing.ocorrencia
+      });
+    } else {
+      setForm(initial);
+    }
+  }, [editing]);
+
+  const isValid = Object.values(form).every(v => v !== '');
 
   const handleChange = e => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
   };
 
-  const isValid =
-    form.dia &&
-    form.horaInicio &&
-    form.horaFim &&
-    form.loja &&
-    form.contato &&
-    form.ocorrencia;
-
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!isValid) return;
+    const method = editing ? 'PUT' : 'POST';
+    const url = editing
+      ? `${API_URL}/api/atendimentos/${editing.id}`
+      : `${API_URL}/api/atendimentos`;
 
-    // Monta o body explicitamente
     const body = {
       atendente,
-      dia: form.dia,
-      horaInicio: form.horaInicio,
-      horaFim: form.horaFim,
-      loja: form.loja,
-      contato: form.contato,
-      ocorrencia: form.ocorrencia
+      sector: editing ? editing.sector : editing, // mantém setor original
+      ...form
     };
 
-    try {
-      const res = await fetch(`${API_URL}/api/atendimentos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token
-        },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        // lê a mensagem de erro em texto bruto
-        const text = await res.text();
-        alert(`Erro ao cadastrar: ${res.status} ${text}`);
-        return;
-      }
-      // sucesso → limpa e atualiza a lista
-      setForm({
-        dia: today,
-        horaInicio: '',
-        horaFim: '',
-        loja: '',
-        contato: '',
-        ocorrencia: ''
-      });
-      onAdd();
-    } catch {
-      alert('Erro de conexão ao servidor');
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      return alert('Erro ao salvar atendimento');
     }
+
+    onSave();
+    setForm(initial);
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit}>
+    <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        {editing ? 'Editar Atendimento' : 'Novo Atendimento'}
+      </Typography>
       <Stack spacing={2}>
-        <Typography variant="h6" align="center">Novo Atendimento</Typography>
-        <TextField
-          label="Atendente"
-          value={atendente}
-          disabled
-          fullWidth
-        />
         <TextField
           label="Data"
           name="dia"
@@ -109,83 +91,74 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           value={form.dia}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
-          fullWidth
           required
         />
         <TextField
-          label="Hora de Início"
-          name="horaInicio"
+          label="Hora Início"
+          name="hora_inicio"
           type="time"
-          value={form.horaInicio}
+          value={form.hora_inicio}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
-          fullWidth
           required
         />
         <TextField
-          label="Hora de Término"
-          name="horaFim"
+          label="Hora Fim"
+          name="hora_fim"
           type="time"
-          value={form.horaFim}
+          value={form.hora_fim}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
-          fullWidth
           required
         />
-
-        <FormControl fullWidth required>
-          <InputLabel id="loja-label">Loja</InputLabel>
+        <FormControl required>
+          <InputLabel>Loja</InputLabel>
           <Select
-            labelId="loja-label"
             name="loja"
             value={form.loja}
-            label="Loja"
             onChange={handleChange}
           >
-            {opts.lojas.map(loja => (
-              <MenuItem key={loja} value={loja}>{loja}</MenuItem>
-            ))}
+            {/* substitua pelas suas lojas fixas */}
+            <MenuItem value="Loja A">Loja A</MenuItem>
+            <MenuItem value="Loja B">Loja B</MenuItem>
+            <MenuItem value="Loja C">Loja C</MenuItem>
           </Select>
         </FormControl>
-
-        <FormControl fullWidth required>
-          <InputLabel id="contato-label">Contato</InputLabel>
+        <FormControl required>
+          <InputLabel>Contato</InputLabel>
           <Select
-            labelId="contato-label"
             name="contato"
             value={form.contato}
-            label="Contato"
             onChange={handleChange}
           >
-            {opts.contatos.map(c => (
-              <MenuItem key={c} value={c}>{c}</MenuItem>
-            ))}
+            {/* substitua pelos seus contatos fixos */}
+            <MenuItem value="Contato 1">Contato 1</MenuItem>
+            <MenuItem value="Contato 2">Contato 2</MenuItem>
           </Select>
         </FormControl>
-
-        <FormControl fullWidth required>
-          <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
-          <Select
-            labelId="ocorrencia-label"
-            name="ocorrencia"
-            value={form.ocorrencia}
-            label="Ocorrência"
-            onChange={handleChange}
+        <TextField
+          label="Ocorrência"
+          name="ocorrencia"
+          multiline
+          rows={3}
+          value={form.ocorrencia}
+          onChange={handleChange}
+          required
+        />
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={!isValid}
           >
-            {opts.ocorrencias.map(o => (
-              <MenuItem key={o} value={o}>{o}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={!isValid}
-          fullWidth
-        >
-          Cadastrar
-        </Button>
+            {editing ? 'Atualizar' : 'Cadastrar'}
+          </Button>
+          {editing && (
+            <Button variant="outlined" onClick={onCancel}>
+              Cancelar
+            </Button>
+          )}
+        </Box>
       </Stack>
     </Box>
   );
