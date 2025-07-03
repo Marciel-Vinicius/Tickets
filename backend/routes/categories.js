@@ -1,10 +1,9 @@
-// backend/routes/categories.js
 const express = require('express');
 const { query } = require('../db');
 const router = express.Router();
 
 /*
-  ⚠️ No seu banco (só precisa rodar uma vez):
+  ⚠️ Uma só vez no banco (pgAdmin ou CLI):
     ALTER TABLE contatos
       ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
 */
@@ -14,7 +13,7 @@ router.get('/', async (req, res) => {
     let contatos = [];
     let ocorrencias = [];
 
-    // 1) Puxa categorias (lojas)
+    // 1) Carrega lojas
     try {
         const { rows } = await query(
             'SELECT nome FROM categorias ORDER BY nome',
@@ -23,10 +22,9 @@ router.get('/', async (req, res) => {
         if (Array.isArray(rows)) lojas = rows.map(r => r.nome);
     } catch (err) {
         console.error('Erro ao SELECT categorias:', err);
-        // lojas permanece []
     }
 
-    // 2) Puxa contatos (inclui campo ativo)
+    // 2) Carrega contatos
     try {
         const { rows } = await query(
             'SELECT id, nome, categoria, ativo FROM contatos ORDER BY nome',
@@ -35,10 +33,9 @@ router.get('/', async (req, res) => {
         if (Array.isArray(rows)) contatos = rows;
     } catch (err) {
         console.error('Erro ao SELECT contatos:', err);
-        // contatos permanece []
     }
 
-    // 3) Puxa ocorrências (descrições)
+    // 3) Carrega ocorrências
     try {
         const { rows } = await query(
             'SELECT descricao FROM ocorrencias ORDER BY descricao',
@@ -47,11 +44,10 @@ router.get('/', async (req, res) => {
         if (Array.isArray(rows)) ocorrencias = rows.map(r => r.descricao);
     } catch (err) {
         console.error('Erro ao SELECT ocorrencias:', err);
-        // ocorrencias permanece []
     }
 
-    // Retorna sempre arrays válidos, mesmo que vazios
-    return res.json({ lojas, contatos, ocorrencias });
+    // Sempre retorna arrays, mesmo que vazios
+    res.json({ lojas, contatos, ocorrencias });
 });
 
 router.patch('/contatos/:id/inactivate', async (req, res) => {
@@ -64,10 +60,10 @@ router.patch('/contatos/:id/inactivate', async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Contato não encontrado.' });
         }
-        return res.json(result.rows[0]);
+        res.json(result.rows[0]);
     } catch (err) {
         console.error('Erro ao inativar contato:', err);
-        return res.status(500).json({ message: 'Erro ao inativar contato.' });
+        res.status(500).json({ message: 'Erro ao inativar contato.' });
     }
 });
 
