@@ -105,6 +105,7 @@ export default function App() {
     }
     setToken(t);
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
@@ -121,13 +122,15 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(res => (res.ok ? res.json() : Promise.reject()))
       .then(data => setAtendimentos(data))
       .catch(() => alert('Falha ao carregar atendimentos.'));
   };
 
   useEffect(() => {
-    if (token) fetchAtendimentos();
+    if (token) {
+      fetchAtendimentos();
+    }
   }, [token]);
 
   const generateReport = () => {
@@ -135,7 +138,7 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.blob() : Promise.reject()))
+      .then(res => (res.ok ? res.blob() : Promise.reject()))
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -147,6 +150,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
+  // Drawer menu
   const drawer = (
     <>
       <Toolbar>
@@ -203,7 +207,7 @@ export default function App() {
         <AppBar
           position="fixed"
           sx={{
-            zIndex: t => t.zIndex.drawer + 1,
+            zIndex: theme => theme.zIndex.drawer + 1,
             ml: { md: `${drawerWidth}px` }
           }}
         >
@@ -212,7 +216,7 @@ export default function App() {
               <IconButton
                 color="inherit"
                 edge="start"
-                onClick={() => setMobileOpen(v => !v)}
+                onClick={() => setMobileOpen(open => !open)}
                 sx={{ mr: 2, display: { md: 'none' } }}
               >
                 <MenuIcon />
@@ -271,7 +275,7 @@ export default function App() {
             <>
               {view === 'atendimentos' && (
                 <Grid container spacing={4}>
-                  {/* FORMULÁRIO em tela inteira */}
+                  {/* Formulário */}
                   <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
@@ -282,8 +286,7 @@ export default function App() {
                       />
                     </StyledPaper>
                   </Grid>
-
-                  {/* LISTA em tela inteira */}
+                  {/* Lista */}
                   <Grid item xs={12}>
                     <StyledPaper>
                       <Box
@@ -300,4 +303,27 @@ export default function App() {
                             label="Data do Relatório"
                             type="date"
                             size="small"
-                            value={reportDa
+                            value={reportDate}
+                            onChange={e => setReportDate(e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                          />
+                          <Button variant="contained" onClick={generateReport}>
+                            Gerar Relatório
+                          </Button>
+                        </Box>
+                      </Box>
+                      <AtendimentoList token={token} />
+                    </StyledPaper>
+                  </Grid>
+                </Grid>
+              )}
+              {view === 'categories' && <StyledPaper><CategoryManagement token={token} /></StyledPaper>}
+              {view === 'users' && <StyledPaper><UserManagement token={token} /></StyledPaper>}
+              {view === 'reports' && <StyledPaper><ReportDashboard token={token} /></StyledPaper>}
+            </>
+          )}
+        </Box>
+      </Box>
+    </ThemeProvider>
+  );
+}
