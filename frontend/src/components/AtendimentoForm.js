@@ -1,56 +1,68 @@
+// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-  Box, TextField, Button,
-  FormControl, InputLabel, Select, MenuItem,
-  Stack, Alert, Typography
+  Box, TextField, Button, FormControl,
+  InputLabel, Select, MenuItem, Stack, Alert
 } from '@mui/material';
 
-export default function AtendimentoForm({ onAdd, token, atendente }) {
+export default function AtendimentoForm({
+  onAdd,
+  onUpdate,
+  editingAtendimento,
+  clearEditing,
+  token,
+  atendente
+}) {
   const today = new Date().toISOString().split('T')[0];
-  const [form, setForm] = useState({
+  const initialState = {
     dia: today,
     horaInicio: '',
     horaFim: '',
     loja: '',
     contato: '',
     ocorrencia: ''
-  });
-  const [opts, setOpts] = useState({
-    lojas: [],
-    contatos: [],
-    ocorrencias: []
-  });
+  };
+  const [form, setForm] = useState(initialState);
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
   const [feedback, setFeedback] = useState({ type: '', text: '' });
 
+  // Carrega opções de loja/contato/ocorrência
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => {
-        if (!r.ok) throw new Error(`Status ${r.status}`);
-        return r.json();
-      })
-      .then(data => {
-        setOpts({
-          lojas: Array.isArray(data.lojas) ? data.lojas : [],
-          contatos: Array.isArray(data.contatos) ? data.contatos : [],
-          ocorrencias: Array.isArray(data.ocorrencias)
-            ? data.ocorrencias
-            : []
-        });
-      })
-      .catch(err => {
-        console.error('Erro ao buscar categorias:', err);
-        setOpts({ lojas: [], contatos: [], ocorrencias: [] });
-        setFeedback({ type: 'error', text: 'Erro ao carregar opções.' });
-      });
+      .then(r => r.json())
+      .then(data => setOpts({
+        lojas: data.lojas,
+        contatos: data.contatos,
+        ocorrencias: data.ocorrencias
+      }))
+      .catch(console.error);
   }, [token]);
 
+  // Quando entra em modo de edição, preenche o formulário
   useEffect(() => {
-    if (!feedback.text) return;
-    const timer = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
-    return () => clearTimeout(timer);
+    if (editingAtendimento) {
+      setForm({
+        dia: editingAtendimento.dia.split('T')[0],
+        horaInicio: editingAtendimento.horaInicio,
+        horaFim: editingAtendimento.horaFim,
+        loja: editingAtendimento.loja,
+        contato: editingAtendimento.contato,
+        ocorrencia: editingAtendimento.ocorrencia
+      });
+    } else {
+      setForm(initialState);
+    }
+  }, [editingAtendimento]);
+
+  // Limpa mensagens de feedback após 3s
+  useEffect(() => {
+    if (feedback.text) {
+      const timer = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
+      return () => clearTimeout(timer);
+    }
   }, [feedback]);
 
   const isValid =
@@ -61,65 +73,69 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
     form.contato &&
     form.ocorrencia;
 
-  const handleChange = e =>
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
     if (!isValid) {
-      setFeedback({ type: 'error', text: '❌ Preencha todos os campos.' });
+      setFeedback({ type: 'error', text: '❌ Preencha todos os campos obrigatórios.' });
       return;
     }
+    const body = {
+      atendente,
+      dia: form.dia,
+      horaInicio: form.horaInicio,
+      horaFim: form.horaFim,
+      loja: form.loja,
+      contato: form.contato,
+      ocorrencia: form.ocorrencia
+    };
+    const isEditing = !!editingAtendimento;
+    const url = isEditing
+      ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
+      : `${API_URL}/api/atendimentos`;
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-      const res = await fetch(`${API_URL}/api/atendimentos`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token
         },
-        body: JSON.stringify({
-          atendente,
-          dia: form.dia,
-          horaInicio: form.horaInicio,
-          horaFim: form.horaFim,
-          loja: form.loja,
-          contato: form.contato,
-          ocorrencia: form.ocorrencia
-        })
+        body: JSON.stringify(body)
       });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
-      setFeedback({ type: 'success', text: '✅ Atendimento salvo!' });
-      setForm({
-        dia: today,
-        horaInicio: '',
-        horaFim: '',
-        loja: '',
-        contato: '',
-        ocorrencia: ''
-      });
-      onAdd();
-    } catch (err) {
-      console.error('Erro ao salvar atendimento:', err);
-      setFeedback({ type: 'error', text: '❌ Erro ao salvar. Tente novamente.' });
+      if (!res.ok) {
+        setFeedback({ type: 'error', text: '❌ Erro ao salvar atendimento. Tente novamente.' });
+        return;
+      }
+      setFeedback({ type: 'success', text: '✅ Atendimento salvo com sucesso!' });
+      setForm(initialState);
+      if (isEditing) {
+        onUpdate();
+        clearEditing();
+      } else {
+        onAdd();
+      }
+    } catch {
+      setFeedback({ type: 'error', text: '❌ Erro de conexão ao servidor.' });
     }
   };
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>
-      <Typography variant="h6">Novo Atendimento</Typography>
       {feedback.text && (
-        <Alert severity={feedback.type} sx={{ mb: 2 }}>
+        <Alert
+          severity={feedback.type === 'error' ? 'error' : 'success'}
+          sx={{ mb: 2 }}
+        >
           {feedback.text}
         </Alert>
       )}
       <Stack spacing={2}>
-        <TextField
-          label="Atendente"
-          name="atendente"
-          value={atendente}
-          disabled
-          fullWidth
-        />
         <TextField
           label="Data"
           name="dia"
@@ -131,7 +147,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           required
         />
         <TextField
-          label="Hora Início"
+          label="Hora de Início"
           name="horaInicio"
           type="time"
           value={form.horaInicio}
@@ -141,7 +157,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           required
         />
         <TextField
-          label="Hora Término"
+          label="Hora de Término"
           name="horaFim"
           type="time"
           value={form.horaFim}
@@ -150,63 +166,50 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           fullWidth
           required
         />
-
         <FormControl fullWidth required>
           <InputLabel id="loja-label">Loja</InputLabel>
           <Select
             labelId="loja-label"
             name="loja"
             value={form.loja}
-            label="Loja"
             onChange={handleChange}
+            label="Loja"
           >
-            {Array.isArray(opts.lojas) &&
-              opts.lojas.map(loja => (
-                <MenuItem key={loja} value={loja}>
-                  {loja}
-                </MenuItem>
-              ))}
+            {opts.lojas.map(loja => (
+              <MenuItem key={loja} value={loja}>{loja}</MenuItem>
+            ))}
           </Select>
         </FormControl>
-
         <FormControl fullWidth required>
           <InputLabel id="contato-label">Contato</InputLabel>
           <Select
             labelId="contato-label"
             name="contato"
             value={form.contato}
-            label="Contato"
             onChange={handleChange}
+            label="Contato"
           >
-            {Array.isArray(opts.contatos) &&
-              opts.contatos.map(c => (
-                <MenuItem key={c.id || c} value={c.nome || c}>
-                  {c.nome || c}
-                </MenuItem>
-              ))}
+            {opts.contatos.map(cont => (
+              <MenuItem key={cont} value={cont}>{cont}</MenuItem>
+            ))}
           </Select>
         </FormControl>
-
         <FormControl fullWidth required>
           <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
           <Select
             labelId="ocorrencia-label"
             name="ocorrencia"
             value={form.ocorrencia}
-            label="Ocorrência"
             onChange={handleChange}
+            label="Ocorrência"
           >
-            {Array.isArray(opts.ocorrencias) &&
-              opts.ocorrencias.map(o => (
-                <MenuItem key={o} value={o}>
-                  {o}
-                </MenuItem>
-              ))}
+            {opts.ocorrencias.map(occ => (
+              <MenuItem key={occ} value={occ}>{occ}</MenuItem>
+            ))}
           </Select>
         </FormControl>
-
-        <Button type="submit" variant="contained" disabled={!isValid}>
-          Cadastrar
+        <Button type="submit" variant="contained" fullWidth>
+          {editingAtendimento ? 'Atualizar' : 'Cadastrar'}
         </Button>
       </Stack>
     </Box>
