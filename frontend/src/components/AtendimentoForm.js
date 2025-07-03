@@ -1,15 +1,14 @@
 // frontend/src/components/AtendimentoForm.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   Paper,
   Box,
-  Grid,
   TextField,
   MenuItem,
   Button,
   Typography
-} from '@mui/material';
-import API_URL from '../config';
+} from '@mui/material'
+import API_URL from '../config'
 
 export default function AtendimentoForm({
   token,
@@ -26,20 +25,20 @@ export default function AtendimentoForm({
     loja: '',
     contato: '',
     ocorrencia: ''
-  });
-  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
+  })
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] })
 
-  // carrega opções
+  // carregar opções de categorias
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => r.json())
       .then(data => setOpts(data))
-      .catch(console.error);
-  }, [token]);
+      .catch(console.error)
+  }, [token])
 
-  // se for editar, pré-preenche
+  // preencher form se for edição
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -50,17 +49,17 @@ export default function AtendimentoForm({
         loja: editingAtendimento.loja || '',
         contato: editingAtendimento.contato || '',
         ocorrencia: editingAtendimento.ocorrencia || ''
-      });
+      })
     }
-  }, [editingAtendimento]);
+  }, [editingAtendimento])
 
   const handleChange = e => {
-    const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
-  };
+    const { name, value } = e.target
+    setForm(f => ({ ...f, [name]: value }))
+  }
 
   const handleSubmit = e => {
-    e.preventDefault();
+    e.preventDefault()
     const payload = {
       atendente: form.atendente,
       dia: form.dia,
@@ -69,11 +68,11 @@ export default function AtendimentoForm({
       loja: form.loja,
       contato: form.contato,
       ocorrencia: form.ocorrencia
-    };
+    }
     const url = editingAtendimento
       ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
-      : `${API_URL}/api/atendimentos`;
-    const method = editingAtendimento ? 'PUT' : 'POST';
+      : `${API_URL}/api/atendimentos`
+    const method = editingAtendimento ? 'PUT' : 'POST'
 
     fetch(url, {
       method,
@@ -84,9 +83,9 @@ export default function AtendimentoForm({
       body: JSON.stringify(payload)
     })
       .then(r => {
-        if (!r.ok) return Promise.reject();
-        clearEditing && clearEditing();
-        editingAtendimento ? onUpdate() : onAdd();
+        if (!r.ok) return Promise.reject()
+        clearEditing && clearEditing()
+        editingAtendimento ? onUpdate() : onAdd()
         setForm({
           atendente: '',
           dia: '',
@@ -95,129 +94,120 @@ export default function AtendimentoForm({
           loja: '',
           contato: '',
           ocorrencia: ''
-        });
+        })
       })
-      .catch(() => alert('Erro ao salvar atendimento.'));
-  };
+      .catch(() => alert('Erro ao salvar atendimento.'))
+  }
 
   return (
-    <Paper elevation={3} sx={{ width: '200%' }}>
-      <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          {editingAtendimento ? 'Editar Atendimento' : 'Cadastrar Atendimento'}
-        </Typography>
+    <Paper elevation={3} sx={{ width: '100%' }}>
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{
+          p: 3,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 2
+        }}
+      >
+        <Box sx={{ width: '100%' }}>
+          <Typography variant="h6">
+            {editingAtendimento ? 'Editar Atendimento' : 'Cadastrar Atendimento'}
+          </Typography>
+        </Box>
 
-        <Grid container spacing={2} alignItems="center">
-          {/* Cada campo agora ocupa parte igual da largura */}
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              required
-              label="Atendente"
-              name="atendente"
-              value={form.atendente}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              required
-              label="Data"
-              name="dia"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              value={form.dia}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={6} sm={4} md={2}>
-            <TextField
-              fullWidth
-              required
-              label="Hora Início"
-              name="horaInicio"
-              type="time"
-              InputLabelProps={{ shrink: true }}
-              value={form.horaInicio}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={6} sm={4} md={2}>
-            <TextField
-              fullWidth
-              required
-              label="Hora Fim"
-              name="horaFim"
-              type="time"
-              InputLabelProps={{ shrink: true }}
-              value={form.horaFim}
-              onChange={handleChange}
-            />
-          </Grid>
+        <TextField
+          name="atendente"
+          label="Atendente"
+          required
+          value={form.atendente}
+          onChange={handleChange}
+          sx={{ flex: '1 1 200px' }}
+        />
+        <TextField
+          name="dia"
+          label="Data"
+          type="date"
+          required
+          InputLabelProps={{ shrink: true }}
+          value={form.dia}
+          onChange={handleChange}
+          sx={{ flex: '1 1 150px' }}
+        />
+        <TextField
+          name="horaInicio"
+          label="Hora Início"
+          type="time"
+          required
+          InputLabelProps={{ shrink: true }}
+          value={form.horaInicio}
+          onChange={handleChange}
+          sx={{ flex: '1 1 120px' }}
+        />
+        <TextField
+          name="horaFim"
+          label="Hora Fim"
+          type="time"
+          required
+          InputLabelProps={{ shrink: true }}
+          value={form.horaFim}
+          onChange={handleChange}
+          sx={{ flex: '1 1 120px' }}
+        />
+        <TextField
+          select
+          name="loja"
+          label="Loja"
+          value={form.loja}
+          onChange={handleChange}
+          sx={{ flex: '1 1 150px' }}
+        >
+          {opts.lojas.map(loja => (
+            <MenuItem key={loja} value={loja}>
+              {loja}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          name="contato"
+          label="Contato"
+          value={form.contato}
+          onChange={handleChange}
+          sx={{ flex: '1 1 150px' }}
+        >
+          {opts.contatos.map(c => (
+            <MenuItem key={c} value={c}>
+              {c}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          name="ocorrencia"
+          label="Ocorrência"
+          value={form.ocorrencia}
+          onChange={handleChange}
+          sx={{ flex: '1 1 150px' }}
+        >
+          {opts.ocorrencias.map(o => (
+            <MenuItem key={o} value={o}>
+              {o}
+            </MenuItem>
+          ))}
+        </TextField>
 
-          {/* Quebra de linha automática */}
-          <Grid item xs={12} sm={4} md={2}>
-            <TextField
-              fullWidth
-              select
-              label="Loja"
-              name="loja"
-              value={form.loja}
-              onChange={handleChange}
-            >
-              {opts.lojas.map(loja => (
-                <MenuItem key={loja} value={loja}>
-                  {loja}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <TextField
-              fullWidth
-              select
-              label="Contato"
-              name="contato"
-              value={form.contato}
-              onChange={handleChange}
-            >
-              {opts.contatos.map(c => (
-                <MenuItem key={c} value={c}>
-                  {c}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <TextField
-              fullWidth
-              select
-              label="Ocorrência"
-              name="ocorrencia"
-              value={form.ocorrencia}
-              onChange={handleChange}
-            >
-              {opts.ocorrencias.map(o => (
-                <MenuItem key={o} value={o}>
-                  {o}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4}>
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              size="large"
-            >
-              {editingAtendimento ? 'Atualizar' : 'Cadastrar'}
-            </Button>
-          </Grid>
-        </Grid>
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          sx={{ flex: '0 0 auto' }}
+        >
+          {editingAtendimento ? 'Atualizar' : 'Cadastrar'}
+        </Button>
       </Box>
     </Paper>
-  );
+  )
 }
