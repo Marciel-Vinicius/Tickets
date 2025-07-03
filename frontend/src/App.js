@@ -43,7 +43,7 @@ import ReportDashboard from './components/ReportDashboard';
 
 const drawerWidth = 240;
 
-// Styled components for consistent padding, radius and shadow
+// Um Paper reutilizável com padding, borda arredondada e sombra
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
@@ -115,7 +115,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos state & fetching
+  // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
@@ -127,10 +127,8 @@ export default function App() {
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(raw => {
-        const sorted = raw.sort(
-          (a, b) => new Date(a.dia) - new Date(b.dia)
-        );
-        // process Saturday logic omitted for brevity
+        // processar e ordenar
+        const sorted = raw.sort((a, b) => new Date(a.dia) - new Date(b.dia));
         setAtendimentos(
           sorted.map(item => ({
             ...item,
@@ -163,7 +161,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Drawer menu items
+  // Menu lateral
   const drawer = (
     <>
       <Toolbar>
@@ -177,7 +175,7 @@ export default function App() {
             key: 'categories',
             icon: <CategoryIcon />,
             label: 'Categorias',
-            auth: user?.sector === 'DEV' || user?.sector === 'SAF',
+            auth: ['DEV', 'SAF'].includes(user?.sector),
           },
           {
             key: 'users',
@@ -201,7 +199,9 @@ export default function App() {
             </ListItemButton>
           </ListItem>
         ))}
-        <Divider />
+      </List>
+      <Divider />
+      <List>
         <ListItem disablePadding>
           <ListItemButton onClick={handleLogout}>
             <ListItemText primary="Logout" />
@@ -215,16 +215,15 @@ export default function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{ display: 'flex', background: theme.palette.background.default, minHeight: '100vh' }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <CssBaseline />
+
+        {/* AppBar com zIndex acima do Drawer e deslocado à direita em desktop */}
         <AppBar
           position="fixed"
-          color="primary"
-          elevation={1}
           sx={{
-            width: { md: `calc(100% - ${drawerWidth}px)` },
+            zIndex: t => t.zIndex.drawer + 1,
             ml: { md: `${drawerWidth}px` },
-            boxShadow: theme.shadows[2],
           }}
         >
           <Toolbar>
@@ -247,47 +246,60 @@ export default function App() {
           </Toolbar>
         </AppBar>
 
+        {/* Drawer temporário (mobile) */}
         {user && (
-          <>
-            <Drawer
-              variant="temporary"
-              open={mobileOpen}
-              onClose={handleDrawerToggle}
-              ModalProps={{ keepMounted: true }}
-              sx={{
-                display: { xs: 'block', md: 'none' },
-                '& .MuiDrawer-paper': { width: drawerWidth },
-              }}
-            >
-              {drawer}
-            </Drawer>
-            <Drawer
-              variant="permanent"
-              open
-              sx={{
-                display: { xs: 'none', md: 'block' },
-                '& .MuiDrawer-paper': { width: drawerWidth, borderRight: 0 },
-              }}
-            >
-              {drawer}
-            </Drawer>
-          </>
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              '& .MuiDrawer-paper': {
+                width: drawerWidth,
+                boxSizing: 'border-box',
+              },
+            }}
+          >
+            {drawer}
+          </Drawer>
         )}
 
+        {/* Drawer permanente (desktop) */}
+        {user && (
+          <Drawer
+            variant="permanent"
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              '& .MuiDrawer-paper': {
+                width: drawerWidth,
+                boxSizing: 'border-box',
+              },
+            }}
+            open
+          >
+            {drawer}
+          </Drawer>
+        )}
+
+        {/* Conteúdo principal */}
         <Box
           component="main"
           sx={{
             flexGrow: 1,
             p: 3,
             width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-            mt: 8,
+            ml: { md: `${drawerWidth}px` },
           }}
         >
+          {/* dá espaço para o AppBar */}
+          <Toolbar />
+
           {!user ? (
             <Container
               maxWidth="xs"
               sx={{
-                mt: 10,
+                mt: 8,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
