@@ -11,7 +11,13 @@ import {
 } from '@mui/material';
 import API_URL from '../config';
 
-export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendimento, clearEditing }) {
+export default function AtendimentoForm({
+  token,
+  onAdd,
+  onUpdate,
+  editingAtendimento,
+  clearEditing
+}) {
   const [form, setForm] = useState({
     atendente: '',
     dia: '',
@@ -23,7 +29,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carrega opções de categorias
+  // carrega opções
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -33,7 +39,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
       .catch(console.error);
   }, [token]);
 
-  // se veio para editar, pré-enche form
+  // se for editar, pré-preenche
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -80,7 +86,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
       .then(r => {
         if (!r.ok) return Promise.reject();
         clearEditing && clearEditing();
-        onAdd ? onAdd() : onUpdate();
+        editingAtendimento ? onUpdate() : onAdd();
         setForm({
           atendente: '',
           dia: '',
@@ -95,17 +101,15 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
   };
 
   return (
-    <Paper elevation={3}>
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{ p: 3 }}
-      >
+    <Paper elevation={3} sx={{ width: '100%' }}>
+      <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
           {editingAtendimento ? 'Editar Atendimento' : 'Cadastrar Atendimento'}
         </Typography>
+
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={2}>
+          {/* Cada campo agora ocupa parte igual da largura */}
+          <Grid item xs={12} sm={6} md={3}>
             <TextField
               fullWidth
               required
@@ -115,7 +119,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               onChange={handleChange}
             />
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid item xs={12} sm={6} md={3}>
             <TextField
               fullWidth
               required
@@ -127,7 +131,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               onChange={handleChange}
             />
           </Grid>
-          <Grid item xs={6} md={2}>
+          <Grid item xs={6} sm={4} md={2}>
             <TextField
               fullWidth
               required
@@ -139,7 +143,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               onChange={handleChange}
             />
           </Grid>
-          <Grid item xs={6} md={2}>
+          <Grid item xs={6} sm={4} md={2}>
             <TextField
               fullWidth
               required
@@ -151,7 +155,9 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               onChange={handleChange}
             />
           </Grid>
-          <Grid item xs={12} sm={4} md={1}>
+
+          {/* Quebra de linha automática */}
+          <Grid item xs={12} sm={4} md={2}>
             <TextField
               fullWidth
               select
@@ -167,7 +173,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={4} md={1}>
+          <Grid item xs={12} sm={4} md={2}>
             <TextField
               fullWidth
               select
@@ -183,7 +189,7 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={4} md={1}>
+          <Grid item xs={12} sm={4} md={2}>
             <TextField
               fullWidth
               select
@@ -199,10 +205,11 @@ export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendim
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} md={2}>
+
+          <Grid item xs={12} sm={6} md={4}>
             <Button
-              type="submit"
               fullWidth
+              type="submit"
               variant="contained"
               size="large"
             >
