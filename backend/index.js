@@ -1,28 +1,32 @@
+// backend/index.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 
-const { authenticateToken } = require('./middleware/auth');  // ajustado o path
-const atendimentosRouter = require('./routes/atendimentos');
-const categoriesRouter = require('./routes/categories');
-const usersRouter = require('./routes/users');
-// importe aqui outras rotas, se houver
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/users');
+const atendRouter = require('./routes/atendimentos');
+const categoryRouter = require('./routes/categories');
+const reportsRouter = require('./routes/reports');
+
+const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
+
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// Rotas protegidas (coloque antes suas rotas públicas, se houver)
-app.use('/api/atendimentos', authenticateToken, atendimentosRouter);
-app.use('/api/categories', authenticateToken, categoriesRouter);
-app.use('/api/users', authenticateToken, usersRouter);
+// Públicos
+app.use('/api/auth', authRouter);
 
-// Handler genérico de erros
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({ message: 'Erro interno no servidor.' });
-});
+// Protegidos
+app.use('/api/users', authenticateToken, userRouter);
+app.use('/api/categories', authenticateToken, categoryRouter);
+app.use('/api/atendimentos', authenticateToken, atendRouter);
+app.use('/api/reports', authenticateToken, reportsRouter);
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`🚀 Backend rodando na porta ${PORT}`);
-});
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () =>
+    console.log(`🚀 Backend rodando na porta ${PORT}`)
+);
