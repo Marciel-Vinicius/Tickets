@@ -2,121 +2,268 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-    Box, Typography, Tabs, Tab,
-    Button, Dialog, DialogTitle,
-    DialogContent, DialogActions,
-    TextField, IconButton
+    Box, Typography, TextField, Button,
+    Table, TableHead, TableBody, TableRow, TableCell,
+    IconButton, Checkbox, FormControlLabel, Alert, Grid, Paper
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 
 export default function CategoryManagement({ token }) {
-    const [tab, setTab] = useState('lojas');
-    const [data, setData] = useState([]);
-    const [open, setOpen] = useState(false);
-    const [current, setCurrent] = useState({ oldValue: '', value: '' });
+    const [lojaNome, setLojaNome] = useState('');
+    const [contatoNome, setContatoNome] = useState('');
+    const [contatoCategoria, setContatoCategoria] = useState('');
+    const [ocorrenciaDesc, setOcorrenciaDesc] = useState('');
 
-    const fetchData = () => {
+    const [lojas, setLojas] = useState([]);
+    const [contatos, setContatos] = useState([]);
+    const [ocorrencias, setOcorrencias] = useState([]);
+
+    const [showInactive, setShowInactive] = useState(false);
+    const [feedback, setFeedback] = useState({ type: '', text: '' });
+
+    const fetchAll = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
         })
-            .then(r => r.json())
-            .then(obj => setData(obj[tab]))
-            .catch(console.error);
-    };
-    useEffect(fetchData, [tab]);
-
-    const handleChangeTab = (_, newVal) => setTab(newVal);
-    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
-    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
-    const handleDelete = v => {
-        if (!window.confirm('Confirma exclusão?')) return;
-        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
-            method: 'DELETE',
-            headers: { Authorization: 'Bearer ' + token }
-        }).then(fetchData);
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => {
+                setLojas(data.lojas);
+                setContatos(data.contatos);
+                setOcorrencias(data.ocorrencias);
+            })
+            .catch(err => {
+                console.error(err);
+                setFeedback({ type: 'error', text: 'Erro ao carregar dados.' });
+            });
     };
 
-    const handleSave = () => {
-        const isEdit = Boolean(current.oldValue);
-        const url = isEdit
-            ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
-            : `${API_URL}/api/categories/${tab}`;
-        const method = isEdit ? 'PUT' : 'POST';
-        fetch(url, {
-            method,
+    useEffect(fetchAll, [token]);
+
+    // Mensagens somem após 3s
+    useEffect(() => {
+        if (feedback.text) {
+            const t = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
+            return () => clearTimeout(t);
+        }
+    }, [feedback]);
+
+    const addLoja = () => {
+        if (!lojaNome) return;
+        fetch(`${API_URL}/api/categories`, {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: 'Bearer ' + token
             },
-            body: JSON.stringify({ value: current.value })
-        }).then(() => {
-            setOpen(false);
-            fetchData();
-        });
+            body: JSON.stringify({ nome: lojaNome })
+        })
+            .then(r => {
+                if (!r.ok) throw new Error();
+                setLojaNome('');
+                fetchAll();
+                setFeedback({ type: 'success', text: 'Loja adicionada.' });
+            })
+            .catch(() => setFeedback({ type: 'error', text: 'Erro ao adicionar loja.' }));
     };
 
-    const columns = [
-        { field: 'value', headerName: 'Valor', flex: 1 },
-        {
-            field: 'actions',
-            headerName: 'Ações',
-            flex: 0.5,
-            sortable: false,
-            renderCell: params => (
-                <>
-                    <IconButton onClick={() => handleEdit(params.row.value)}>
-                        <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(params.row.value)}>
-                        <DeleteIcon color="error" />
-                    </IconButton>
-                </>
-            )
-        }
-    ];
+    const addContato = () => {
+        if (!contatoNome || !contatoCategoria) return;
+        fetch(`${API_URL}/api/categories/contatos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
+            body: JSON.stringify({ nome: contatoNome, categoria: contatoCategoria })
+        })
+            .then(r => {
+                if (!r.ok) throw new Error();
+                setContatoNome('');
+                setContatoCategoria('');
+                fetchAll();
+                setFeedback({ type: 'success', text: 'Contato adicionado.' });
+            })
+            .catch(() => setFeedback({ type: 'error', text: 'Erro ao adicionar contato.' }));
+    };
+
+    const addOcorrencia = () => {
+        if (!ocorrenciaDesc) return;
+        fetch(`${API_URL}/api/categories/ocorrencias`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
+            body: JSON.stringify({ descricao: ocorrenciaDesc })
+        })
+            .then(r => {
+                if (!r.ok) throw new Error();
+                setOcorrenciaDesc('');
+                fetchAll();
+                setFeedback({ type: 'success', text: 'Ocorrência adicionada.' });
+            })
+            .catch(() => setFeedback({ type: 'error', text: 'Erro ao adicionar ocorrência.' }));
+    };
+
+    const deleteContato = id => {
+        fetch(`${API_URL}/api/categories/contatos/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(() => {
+            fetchAll();
+            setFeedback({ type: 'success', text: 'Contato removido.' });
+        }).catch(() =>
+            setFeedback({ type: 'error', text: 'Erro ao remover contato.' })
+        );
+    };
+
+    const inactivateContato = id => {
+        fetch(`${API_URL}/api/categories/contatos/${id}/inactivate`, {
+            method: 'PATCH',
+            headers: { Authorization: 'Bearer ' + token }
+        })
+            .then(r => {
+                if (!r.ok) throw new Error();
+                fetchAll();
+                setFeedback({ type: 'success', text: 'Contato inativado.' });
+            })
+            .catch(() =>
+                setFeedback({ type: 'error', text: 'Erro ao inativar contato.' })
+            );
+    };
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
-            <Tabs value={tab} onChange={handleChangeTab}>
-                <Tab label="Lojas" value="lojas" />
-                <Tab label="Contatos" value="contatos" />
-                <Tab label="Ocorrências" value="ocorrencias" />
-            </Tabs>
+            <Typography variant="h5" gutterBottom>Gerenciamento de Categorias & Contatos</Typography>
+            {feedback.text && (
+                <Alert severity={feedback.type} sx={{ mb: 2 }}>
+                    {feedback.text}
+                </Alert>
+            )}
 
-            <Box sx={{ mt: 2, mb: 2 }}>
-                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
-            </Box>
+            <Grid container spacing={4}>
+                {/* Seção de Lojas */}
+                <Grid item xs={12} md={4}>
+                    <Paper sx={{ p: 2 }}>
+                        <Typography variant="subtitle1">Nova Loja</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                            <TextField
+                                label="Nome da Loja"
+                                value={lojaNome}
+                                onChange={e => setLojaNome(e.target.value)}
+                                fullWidth
+                                size="small"
+                            />
+                            <Button variant="contained" onClick={addLoja}>
+                                Adicionar
+                            </Button>
+                        </Box>
+                        <Box component="ul" sx={{ mt: 2 }}>
+                            {lojas.map(l => (
+                                <li key={l}>{l}</li>
+                            ))}
+                        </Box>
+                    </Paper>
+                </Grid>
 
-            <div style={{ height: 400, width: '100%' }}>
-                <DataGrid
-                    rows={data.map(v => ({ id: v, value: v }))}
-                    columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5]}
-                />
-            </div>
+                {/* Seção de Contatos */}
+                <Grid item xs={12} md={4}>
+                    <Paper sx={{ p: 2 }}>
+                        <Typography variant="subtitle1">Novo Contato (Vendedor)</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                            <TextField
+                                label="Nome do Contato"
+                                value={contatoNome}
+                                onChange={e => setContatoNome(e.target.value)}
+                                size="small"
+                            />
+                            <TextField
+                                label="Categoria (Loja)"
+                                value={contatoCategoria}
+                                onChange={e => setContatoCategoria(e.target.value)}
+                                size="small"
+                            />
+                            <Button variant="contained" onClick={addContato}>
+                                Adicionar
+                            </Button>
+                        </Box>
 
-            <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'}
-                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
-                </DialogTitle>
-                <DialogContent sx={{ mt: 1 }}>
-                    <TextField
-                        label="Valor"
-                        value={current.value}
-                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
-                        fullWidth
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">Salvar</Button>
-                </DialogActions>
-            </Dialog>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={showInactive}
+                                    onChange={e => setShowInactive(e.target.checked)}
+                                />
+                            }
+                            label="Mostrar inativos"
+                            sx={{ mt: 2 }}
+                        />
+
+                        <Table size="small" sx={{ mt: 1 }}>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Nome</TableCell>
+                                    <TableCell>Loja</TableCell>
+                                    <TableCell>Ativo</TableCell>
+                                    <TableCell align="right">Ações</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {contatos
+                                    .filter(c => showInactive || c.ativo)
+                                    .map(c => (
+                                        <TableRow key={c.id}>
+                                            <TableCell>{c.nome}</TableCell>
+                                            <TableCell>{c.categoria}</TableCell>
+                                            <TableCell>{c.ativo ? 'Sim' : 'Não'}</TableCell>
+                                            <TableCell align="right">
+                                                {c.ativo && (
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => inactivateContato(c.id)}
+                                                    >
+                                                        <BlockIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => deleteContato(c.id)}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                            </TableBody>
+                        </Table>
+                    </Paper>
+                </Grid>
+
+                {/* Seção de Ocorrências */}
+                <Grid item xs={12} md={4}>
+                    <Paper sx={{ p: 2 }}>
+                        <Typography variant="subtitle1">Nova Ocorrência</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                            <TextField
+                                label="Descrição"
+                                value={ocorrenciaDesc}
+                                onChange={e => setOcorrenciaDesc(e.target.value)}
+                                fullWidth
+                                size="small"
+                            />
+                            <Button variant="contained" onClick={addOcorrencia}>
+                                Adicionar
+                            </Button>
+                        </Box>
+                        <Box component="ul" sx={{ mt: 2 }}>
+                            {ocorrencias.map(o => (
+                                <li key={o}>{o}</li>
+                            ))}
+                        </Box>
+                    </Paper>
+                </Grid>
+            </Grid>
         </Box>
     );
 }
