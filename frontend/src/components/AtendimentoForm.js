@@ -1,5 +1,5 @@
 // frontend/src/components/AtendimentoForm.js
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
   Paper,
   Box,
@@ -7,59 +7,70 @@ import {
   MenuItem,
   Button,
   Typography
-} from '@mui/material'
-import API_URL from '../config'
+} from '@mui/material';
+import API_URL from '../config';
 
 export default function AtendimentoForm({
   token,
+  atendente: userAtendente,
   onAdd,
   onUpdate,
   editingAtendimento,
   clearEditing
 }) {
   const [form, setForm] = useState({
-    atendente: '',
+    atendente: userAtendente || '',
     dia: '',
     horaInicio: '',
     horaFim: '',
     loja: '',
     contato: '',
     ocorrencia: ''
-  })
-  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] })
+  });
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carregar opções de categorias
+  // carrega categorias
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => r.json())
       .then(data => setOpts(data))
-      .catch(console.error)
-  }, [token])
+      .catch(console.error);
+  }, [token]);
 
-  // preencher form se for edição
+  // sempre que mudar editingAtendimento ou login, ajusta form
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
-        atendente: editingAtendimento.atendente || '',
-        dia: editingAtendimento.dia || '',
-        horaInicio: editingAtendimento.horaInicio || '',
-        horaFim: editingAtendimento.horaFim || '',
-        loja: editingAtendimento.loja || '',
-        contato: editingAtendimento.contato || '',
-        ocorrencia: editingAtendimento.ocorrencia || ''
-      })
+        atendente: editingAtendimento.atendente,
+        dia: editingAtendimento.dia,
+        horaInicio: editingAtendimento.horaInicio,
+        horaFim: editingAtendimento.horaFim,
+        loja: editingAtendimento.loja,
+        contato: editingAtendimento.contato,
+        ocorrencia: editingAtendimento.ocorrencia
+      });
+    } else {
+      setForm({
+        atendente: userAtendente,
+        dia: '',
+        horaInicio: '',
+        horaFim: '',
+        loja: '',
+        contato: '',
+        ocorrencia: ''
+      });
     }
-  }, [editingAtendimento])
+  }, [editingAtendimento, userAtendente]);
 
   const handleChange = e => {
-    const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+  };
 
   const handleSubmit = e => {
-    e.preventDefault()
+    e.preventDefault();
     const payload = {
       atendente: form.atendente,
       dia: form.dia,
@@ -68,11 +79,11 @@ export default function AtendimentoForm({
       loja: form.loja,
       contato: form.contato,
       ocorrencia: form.ocorrencia
-    }
+    };
     const url = editingAtendimento
       ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
-      : `${API_URL}/api/atendimentos`
-    const method = editingAtendimento ? 'PUT' : 'POST'
+      : `${API_URL}/api/atendimentos`;
+    const method = editingAtendimento ? 'PUT' : 'POST';
 
     fetch(url, {
       method,
@@ -83,21 +94,13 @@ export default function AtendimentoForm({
       body: JSON.stringify(payload)
     })
       .then(r => {
-        if (!r.ok) return Promise.reject()
-        clearEditing && clearEditing()
-        editingAtendimento ? onUpdate() : onAdd()
-        setForm({
-          atendente: '',
-          dia: '',
-          horaInicio: '',
-          horaFim: '',
-          loja: '',
-          contato: '',
-          ocorrencia: ''
-        })
+        if (!r.ok) return Promise.reject();
+        clearEditing && clearEditing();
+        editingAtendimento ? onUpdate() : onAdd();
+        setForm(f => ({ ...f, dia: '', horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
       })
-      .catch(() => alert('Erro ao salvar atendimento.'))
-  }
+      .catch(() => alert('Erro ao salvar atendimento.'));
+  };
 
   return (
     <Paper elevation={3} sx={{ width: '100%' }}>
@@ -121,9 +124,9 @@ export default function AtendimentoForm({
         <TextField
           name="atendente"
           label="Atendente"
-          required
           value={form.atendente}
-          onChange={handleChange}
+          disabled
+          fullWidth
           sx={{ flex: '1 1 200px' }}
         />
         <TextField
@@ -209,5 +212,5 @@ export default function AtendimentoForm({
         </Button>
       </Box>
     </Paper>
-  )
+  );
 }

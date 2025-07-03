@@ -115,7 +115,6 @@ export default function App() {
   // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
-  const [editingAtendimento, setEditingAtendimento] = useState(null);
 
   const fetchAtendimentos = () => {
     if (!token) return;
@@ -277,6 +276,7 @@ export default function App() {
                     <StyledPaper>
                       <AtendimentoForm
                         token={token}
+                        atendente={user.username}
                         onAdd={fetchAtendimentos}
                         onUpdate={fetchAtendimentos}
                       />
@@ -300,40 +300,4 @@ export default function App() {
                             label="Data do Relatório"
                             type="date"
                             size="small"
-                            value={reportDate}
-                            onChange={e => setReportDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                          />
-                          <Button variant="contained" onClick={generateReport}>
-                            Gerar Relatório
-                          </Button>
-                        </Box>
-                      </Box>
-                      <AtendimentoList token={token} />
-                    </StyledPaper>
-                  </Grid>
-                </Grid>
-              )}
-
-              {view === 'categories' && (
-                <StyledPaper>
-                  <CategoryManagement token={token} />
-                </StyledPaper>
-              )}
-              {view === 'users' && (
-                <StyledPaper>
-                  <UserManagement token={token} />
-                </StyledPaper>
-              )}
-              {view === 'reports' && (
-                <StyledPaper>
-                  <ReportDashboard token={token} />
-                </StyledPaper>
-              )}
-            </>
-          )}
-        </Box>
-      </Box>
-    </ThemeProvider>
-  );
-}
+                            value={reportDa
