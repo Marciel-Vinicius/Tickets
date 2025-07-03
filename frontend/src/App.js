@@ -17,9 +17,7 @@ import {
   Container,
   TextField,
   Button,
-  Paper,
-  Grid,
-  useTheme
+  Grid
 } from '@mui/material';
 import { styled, ThemeProvider } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -43,8 +41,7 @@ import ReportDashboard from './components/ReportDashboard';
 
 const drawerWidth = 240;
 
-// Um Paper reutilizável com padding, borda arredondada e sombra
-const StyledPaper = styled(Paper)(({ theme }) => ({
+const StyledPaper = styled('div')(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
   boxShadow: theme.shadows[3],
@@ -123,20 +120,10 @@ export default function App() {
   const fetchAtendimentos = () => {
     if (!token) return;
     fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + token },
+      headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(raw => {
-        // processar e ordenar
-        const sorted = raw.sort((a, b) => new Date(a.dia) - new Date(b.dia));
-        setAtendimentos(
-          sorted.map(item => ({
-            ...item,
-            horaInicio: item.hora_inicio,
-            horaFim: item.hora_fim,
-          }))
-        );
-      })
+      .then(data => setAtendimentos(data))
       .catch(() => alert('Falha ao carregar atendimentos.'));
   };
 
@@ -147,7 +134,7 @@ export default function App() {
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
-      headers: { Authorization: 'Bearer ' + token },
+      headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => (r.ok ? r.blob() : Promise.reject()))
       .then(blob => {
@@ -161,7 +148,6 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Menu lateral
   const drawer = (
     <>
       <Toolbar>
@@ -175,15 +161,15 @@ export default function App() {
             key: 'categories',
             icon: <CategoryIcon />,
             label: 'Categorias',
-            auth: ['DEV', 'SAF'].includes(user?.sector),
+            auth: ['DEV', 'SAF'].includes(user?.sector)
           },
           {
             key: 'users',
             icon: <PeopleIcon />,
             label: 'Usuários',
-            auth: user?.sector === 'DEV',
+            auth: user?.sector === 'DEV'
           },
-          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' },
+          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
         ].map(item => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton
@@ -211,19 +197,15 @@ export default function App() {
     </>
   );
 
-  const handleDrawerToggle = () => setMobileOpen(o => !o);
-
   return (
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <CssBaseline />
-
-        {/* AppBar com zIndex acima do Drawer e deslocado à direita em desktop */}
         <AppBar
           position="fixed"
           sx={{
             zIndex: t => t.zIndex.drawer + 1,
-            ml: { md: `${drawerWidth}px` },
+            ml: { md: `${drawerWidth}px` }
           }}
         >
           <Toolbar>
@@ -231,7 +213,7 @@ export default function App() {
               <IconButton
                 color="inherit"
                 edge="start"
-                onClick={handleDrawerToggle}
+                onClick={() => setMobileOpen(v => !v)}
                 sx={{ mr: 2, display: { md: 'none' } }}
               >
                 <MenuIcon />
@@ -246,55 +228,29 @@ export default function App() {
           </Toolbar>
         </AppBar>
 
-        {/* Drawer temporário (mobile) */}
-        {user && (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{ keepMounted: true }}
-            sx={{
-              display: { xs: 'block', md: 'none' },
-              '& .MuiDrawer-paper': {
-                width: drawerWidth,
-                boxSizing: 'border-box',
-              },
-            }}
-          >
-            {drawer}
-          </Drawer>
-        )}
-
-        {/* Drawer permanente (desktop) */}
         {user && (
           <Drawer
             variant="permanent"
-            sx={{
-              display: { xs: 'none', md: 'block' },
-              '& .MuiDrawer-paper': {
-                width: drawerWidth,
-                boxSizing: 'border-box',
-              },
-            }}
             open
+            sx={{
+              width: drawerWidth,
+              flexShrink: 0,
+              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+            }}
           >
             {drawer}
           </Drawer>
         )}
 
-        {/* Conteúdo principal */}
         <Box
           component="main"
           sx={{
             flexGrow: 1,
             p: 3,
-            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-            ml: { md: `${drawerWidth}px` },
+            mt: 8,
+            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
           }}
         >
-          {/* dá espaço para o AppBar */}
-          <Toolbar />
-
           {!user ? (
             <Container
               maxWidth="xs"
@@ -303,7 +259,7 @@ export default function App() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 2,
+                gap: 2
               }}
             >
               {view === 'login' ? (
@@ -316,30 +272,30 @@ export default function App() {
             <>
               {view === 'atendimentos' && (
                 <Grid container spacing={4}>
-                  <Grid item xs={12} md={4}>
+                  {/* FORMULÁRIO em tela inteira */}
+                  <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
                         token={token}
-                        atendente={user.username}
-                        editingAtendimento={editingAtendimento}
                         onAdd={fetchAtendimentos}
                         onUpdate={fetchAtendimentos}
-                        clearEditing={() => setEditingAtendimento(null)}
                       />
                     </StyledPaper>
                   </Grid>
-                  <Grid item xs={12} md={8}>
+
+                  {/* LISTA em tela inteira */}
+                  <Grid item xs={12}>
                     <StyledPaper>
                       <Box
                         sx={{
                           display: 'flex',
-                          alignItems: 'center',
                           justifyContent: 'space-between',
-                          mb: 2,
+                          alignItems: 'center',
+                          mb: 2
                         }}
                       >
                         <Typography variant="h6">Atendimentos</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField
                             label="Data do Relatório"
                             type="date"
@@ -348,17 +304,12 @@ export default function App() {
                             onChange={e => setReportDate(e.target.value)}
                             InputLabelProps={{ shrink: true }}
                           />
-                          <Button variant="contained" size="medium" onClick={generateReport}>
+                          <Button variant="contained" onClick={generateReport}>
                             Gerar Relatório
                           </Button>
                         </Box>
                       </Box>
-                      <AtendimentoList
-                        atendimentos={atendimentos}
-                        token={token}
-                        onDelete={fetchAtendimentos}
-                        onEdit={setEditingAtendimento}
-                      />
+                      <AtendimentoList token={token} />
                     </StyledPaper>
                   </Grid>
                 </Grid>
