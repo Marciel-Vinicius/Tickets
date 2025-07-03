@@ -3,7 +3,7 @@ const { query } = require('../db');
 const router = express.Router();
 
 /*
-  ⚠️ Uma só vez no banco (pgAdmin ou CLI):
+  ⚠️ No banco (rodar apenas uma vez):
     ALTER TABLE contatos
       ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
 */
@@ -13,18 +13,15 @@ router.get('/', async (req, res) => {
     let contatos = [];
     let ocorrencias = [];
 
-    // 1) Carrega lojas
+    // 1) categorias → lojas
     try {
-        const { rows } = await query(
-            'SELECT nome FROM categorias ORDER BY nome',
-            []
-        );
+        const { rows } = await query('SELECT nome FROM categorias ORDER BY nome', []);
         if (Array.isArray(rows)) lojas = rows.map(r => r.nome);
     } catch (err) {
         console.error('Erro ao SELECT categorias:', err);
     }
 
-    // 2) Carrega contatos
+    // 2) contatos
     try {
         const { rows } = await query(
             'SELECT id, nome, categoria, ativo FROM contatos ORDER BY nome',
@@ -35,18 +32,15 @@ router.get('/', async (req, res) => {
         console.error('Erro ao SELECT contatos:', err);
     }
 
-    // 3) Carrega ocorrências
+    // 3) ocorrências
     try {
-        const { rows } = await query(
-            'SELECT descricao FROM ocorrencias ORDER BY descricao',
-            []
-        );
+        const { rows } = await query('SELECT descricao FROM ocorrencias ORDER BY descricao', []);
         if (Array.isArray(rows)) ocorrencias = rows.map(r => r.descricao);
     } catch (err) {
         console.error('Erro ao SELECT ocorrencias:', err);
     }
 
-    // Sempre retorna arrays, mesmo que vazios
+    // responde sempre com arrays válidos
     res.json({ lojas, contatos, ocorrencias });
 });
 
