@@ -7,7 +7,7 @@ const bodyParser = require('body-parser');
 const authRouter = require('./routes/auth');
 const userRouter = require('./routes/users');
 const atendRouter = require('./routes/atendimentos');
-const categoryRouter = require('./routes/categories');
+const categoriesRouter = require('./routes/categories');
 const reportsRouter = require('./routes/reports');
 
 const { authenticateToken } = require('./middleware/auth');
