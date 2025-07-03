@@ -1,10 +1,10 @@
-// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
     Box, Typography, TextField, Button,
     Table, TableHead, TableBody, TableRow, TableCell,
-    IconButton, Checkbox, FormControlLabel, Alert, Grid, Paper
+    IconButton, Checkbox, FormControlLabel,
+    Alert, Grid, Paper
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import BlockIcon from '@mui/icons-material/Block';
@@ -18,19 +18,19 @@ export default function CategoryManagement({ token }) {
     const [lojas, setLojas] = useState([]);
     const [contatos, setContatos] = useState([]);
     const [ocorrencias, setOcorrencias] = useState([]);
-
     const [showInactive, setShowInactive] = useState(false);
     const [feedback, setFeedback] = useState({ type: '', text: '' });
 
+    // Carrega dados e garante sempre arrays
     const fetchAll = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
         })
             .then(r => r.ok ? r.json() : Promise.reject())
             .then(data => {
-                setLojas(data.lojas);
-                setContatos(data.contatos);
-                setOcorrencias(data.ocorrencias);
+                setLojas(Array.isArray(data.lojas) ? data.lojas : []);
+                setContatos(Array.isArray(data.contatos) ? data.contatos : []);
+                setOcorrencias(Array.isArray(data.ocorrencias) ? data.ocorrencias : []);
             })
             .catch(err => {
                 console.error(err);
@@ -40,12 +40,11 @@ export default function CategoryManagement({ token }) {
 
     useEffect(fetchAll, [token]);
 
-    // Mensagens somem após 3s
+    // Feedback some após 3s
     useEffect(() => {
-        if (feedback.text) {
-            const t = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
-            return () => clearTimeout(t);
-        }
+        if (!feedback.text) return;
+        const t = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
+        return () => clearTimeout(t);
     }, [feedback]);
 
     const addLoja = () => {
@@ -110,12 +109,12 @@ export default function CategoryManagement({ token }) {
         fetch(`${API_URL}/api/categories/contatos/${id}`, {
             method: 'DELETE',
             headers: { Authorization: 'Bearer ' + token }
-        }).then(() => {
-            fetchAll();
-            setFeedback({ type: 'success', text: 'Contato removido.' });
-        }).catch(() =>
-            setFeedback({ type: 'error', text: 'Erro ao remover contato.' })
-        );
+        })
+            .then(() => {
+                fetchAll();
+                setFeedback({ type: 'success', text: 'Contato removido.' });
+            })
+            .catch(() => setFeedback({ type: 'error', text: 'Erro ao remover contato.' }));
     };
 
     const inactivateContato = id => {
@@ -128,14 +127,15 @@ export default function CategoryManagement({ token }) {
                 fetchAll();
                 setFeedback({ type: 'success', text: 'Contato inativado.' });
             })
-            .catch(() =>
-                setFeedback({ type: 'error', text: 'Erro ao inativar contato.' })
-            );
+            .catch(() => setFeedback({ type: 'error', text: 'Erro ao inativar contato.' }));
     };
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>Gerenciamento de Categorias & Contatos</Typography>
+            <Typography variant="h5" gutterBottom>
+                Gerenciamento de Categorias & Contatos
+            </Typography>
+
             {feedback.text && (
                 <Alert severity={feedback.type} sx={{ mb: 2 }}>
                     {feedback.text}
@@ -143,7 +143,7 @@ export default function CategoryManagement({ token }) {
             )}
 
             <Grid container spacing={4}>
-                {/* Seção de Lojas */}
+                {/* Lojas */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: 2 }}>
                         <Typography variant="subtitle1">Nova Loja</Typography>
@@ -160,14 +160,14 @@ export default function CategoryManagement({ token }) {
                             </Button>
                         </Box>
                         <Box component="ul" sx={{ mt: 2 }}>
-                            {lojas.map(l => (
+                            {lojas?.map(l => (
                                 <li key={l}>{l}</li>
                             ))}
                         </Box>
                     </Paper>
                 </Grid>
 
-                {/* Seção de Contatos */}
+                {/* Contatos */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: 2 }}>
                         <Typography variant="subtitle1">Novo Contato (Vendedor)</Typography>
@@ -211,8 +211,8 @@ export default function CategoryManagement({ token }) {
                             </TableHead>
                             <TableBody>
                                 {contatos
-                                    .filter(c => showInactive || c.ativo)
-                                    .map(c => (
+                                    ?.filter(c => showInactive || c.ativo)
+                                    ?.map(c => (
                                         <TableRow key={c.id}>
                                             <TableCell>{c.nome}</TableCell>
                                             <TableCell>{c.categoria}</TableCell>
@@ -240,7 +240,7 @@ export default function CategoryManagement({ token }) {
                     </Paper>
                 </Grid>
 
-                {/* Seção de Ocorrências */}
+                {/* Ocorrências */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: 2 }}>
                         <Typography variant="subtitle1">Nova Ocorrência</Typography>
@@ -257,7 +257,7 @@ export default function CategoryManagement({ token }) {
                             </Button>
                         </Box>
                         <Box component="ul" sx={{ mt: 2 }}>
-                            {ocorrencias.map(o => (
+                            {ocorrencias?.map(o => (
                                 <li key={o}>{o}</li>
                             ))}
                         </Box>

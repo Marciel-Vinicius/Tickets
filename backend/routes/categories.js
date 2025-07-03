@@ -1,42 +1,49 @@
-// backend/routes/categories.js
 const express = require('express');
 const { query } = require('../db');
 const router = express.Router();
 
 /*
-  Antes de usar essas rotas, adicione na sua base PostgreSQL:
+  ⚠️ Antes de usar:
+  Assegure-se de ter rodado no PostgreSQL:
     ALTER TABLE contatos ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
 */
 
 // GET /api/categories
-// Retorna categorias, contatos (com campo ativo) e ocorrências
+// — Retorna lojas (nomes), contatos (com campo ativo) e ocorrências
 router.get('/', async (req, res) => {
     try {
-        const { rows: lojas } = await query(
+        const { rows: lojasRows } = await query(
             'SELECT nome FROM categorias ORDER BY nome',
             []
         );
-        const { rows: contatos } = await query(
+        const { rows: contatosRows } = await query(
             'SELECT id, nome, categoria, ativo FROM contatos ORDER BY nome',
             []
         );
-        const { rows: ocorrencias } = await query(
+        const { rows: ocorrenciasRows } = await query(
             'SELECT descricao FROM ocorrencias ORDER BY descricao',
             []
         );
-        res.json({
-            lojas: lojas.map(r => r.nome),
-            contatos: contatos,           // array de { id, nome, categoria, ativo }
-            ocorrencias: ocorrencias.map(r => r.descricao)
-        });
+
+        const lojas = Array.isArray(lojasRows)
+            ? lojasRows.map(r => r.nome)
+            : [];
+        const contatos = Array.isArray(contatosRows)
+            ? contatosRows
+            : [];
+        const ocorrencias = Array.isArray(ocorrenciasRows)
+            ? ocorrenciasRows.map(r => r.descricao)
+            : [];
+
+        res.json({ lojas, contatos, ocorrencias });
     } catch (err) {
-        console.error(err);
+        console.error('Erro GET /api/categories:', err);
         res.status(500).json({ message: 'Erro ao carregar categorias.' });
     }
 });
 
 // PATCH /api/categories/contatos/:id/inactivate
-// Marca um contato como inativo
+// — Marca um contato como inativo
 router.patch('/contatos/:id/inactivate', async (req, res) => {
     try {
         const { id } = req.params;
@@ -49,7 +56,7 @@ router.patch('/contatos/:id/inactivate', async (req, res) => {
         }
         res.json(result.rows[0]);
     } catch (err) {
-        console.error(err);
+        console.error('Erro PATCH /api/categories/contatos/:id/inactivate:', err);
         res.status(500).json({ message: 'Erro ao inativar contato.' });
     }
 });
