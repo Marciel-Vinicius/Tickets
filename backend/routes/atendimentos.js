@@ -5,11 +5,24 @@ const PDFDocument = require('pdfkit');
 const { query } = require('../db');
 const router = express.Router();
 
-// Listar atendimentos
+// Listar atendimentos (dia como TEXT no formato YYYY-MM-DD)
 router.get('/', async (req, res) => {
   try {
     const { rows } = await query(
-      'SELECT * FROM atendimentos ORDER BY dia DESC, hora_inicio DESC',
+      `
+      SELECT
+        id,
+        atendente,
+        setor,
+        to_char(dia, 'YYYY-MM-DD') AS dia,
+        hora_inicio,
+        hora_fim,
+        loja,
+        contato,
+        ocorrencia
+      FROM atendimentos
+      ORDER BY dia DESC, hora_inicio DESC
+      `,
       []
     );
     res.json(rows);
@@ -49,7 +62,16 @@ router.put('/:id', async (req, res) => {
       `UPDATE atendimentos SET
          atendente=$1, setor=$2, dia=$3, hora_inicio=$4, hora_fim=$5,
          loja=$6, contato=$7, ocorrencia=$8
-       WHERE id=$9 RETURNING *`,
+       WHERE id=$9 RETURNING
+         id,
+         atendente,
+         setor,
+         to_char(dia,'YYYY-MM-DD') AS dia,
+         hora_inicio,
+         hora_fim,
+         loja,
+         contato,
+         ocorrencia`,
       [atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
     );
     if (result.rowCount === 0) {
@@ -98,7 +120,7 @@ router.get('/report', async (req, res) => {
       .text(`Data: ${d}/${m}/${y}`);
     doc.moveDown();
 
-    // Título da tabela
+    // Tabela
     const top = doc.y;
     doc.font('Helvetica-Bold').fontSize(10)
       .text('H.Início', 50, top)
@@ -107,7 +129,6 @@ router.get('/report', async (req, res) => {
       .text('Ocorrência', 380, top);
     doc.moveDown();
 
-    // Itens
     items.forEach(item => {
       const startY = doc.y;
       doc.font('Helvetica').fontSize(10)
