@@ -1,35 +1,32 @@
 // backend/index.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { authenticateToken, authorizeSector } = require('./middleware/auth');
-const atendimentosRouter = require('./routes/atendimentos');
-const categoriesRouter = require('./routes/categories');
-const usersRouter = require('./routes/users');
+const bodyParser = require('body-parser');
+
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/users');
+const atendRouter = require('./routes/atendimentos');
+const categoryRouter = require('./routes/categories');
+const reportsRouter = require('./routes/reports');
+
+const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// Rotas públicas
-app.post('/api/login', /* seu handler de login */);
-app.post('/api/register', /* seu handler de registro */);
+// Públicos
+app.use('/api/auth', authRouter);
 
-// Rotas protegidas (DEV e SAF)
-app.use('/api/atendimentos', authenticateToken, atendimentosRouter);
-app.use('/api/categories', authenticateToken, categoriesRouter);
+// Protegidos
+app.use('/api/users', authenticateToken, userRouter);
+app.use('/api/categories', authenticateToken, categoryRouter);
+app.use('/api/atendimentos', authenticateToken, atendRouter);
+app.use('/api/reports', authenticateToken, reportsRouter);
 
-// Rotas de usuário só para DEV
-app.use('/api/users', authenticateToken, authorizeSector(['DEV']), usersRouter);
-
-// Handler 404
-app.use((req, res) => res.sendStatus(404));
-
-// Handler de erros
-app.use((err, req, res, next) => {
-    console.error(err);
-    res.sendStatus(500);
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () =>
+    console.log(`🚀 Backend rodando na porta ${PORT}`)
+);

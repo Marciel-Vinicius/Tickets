@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline,
@@ -68,7 +67,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // ** Tema **
+  // Theme
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -77,7 +76,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // ** Autenticação **
+  // Auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -105,6 +104,7 @@ export default function App() {
     }
     setToken(t);
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
@@ -112,7 +112,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // ** Atendimentos **
+  // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
@@ -122,13 +122,15 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(res => (res.ok ? res.json() : Promise.reject()))
       .then(data => setAtendimentos(data))
       .catch(() => alert('Falha ao carregar atendimentos.'));
   };
 
   useEffect(() => {
-    if (token) fetchAtendimentos();
+    if (token) {
+      fetchAtendimentos();
+    }
   }, [token]);
 
   const handleDelete = id => {
@@ -144,7 +146,7 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => (r.ok ? r.blob() : Promise.reject()))
+      .then(res => (res.ok ? res.blob() : Promise.reject()))
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -156,39 +158,35 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // ** Menu lateral, filtrando itens sem permissão (auth===false) **
+  // Monta itens do menu de acordo com setor
   const menuItems = [
     { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
-    {
-      key: 'categories', icon: <CategoryIcon />, label: 'Categorias',
-      auth: ['DEV', 'SAF'].includes(user?.sector)
-    },
-    {
-      key: 'users', icon: <PeopleIcon />, label: 'Usuários',
-      auth: user?.sector === 'DEV'
-    },
+    { key: 'categories', icon: <CategoryIcon />, label: 'Categorias' },
+    user?.sector === 'DEV' && { key: 'users', icon: <PeopleIcon />, label: 'Usuários' },
     { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
-  ];
+  ].filter(Boolean);
 
   const drawer = (
     <>
-      <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
+      <Toolbar>
+        <Typography variant="h6">Menu</Typography>
+      </Toolbar>
       <Divider />
       <List>
-        {menuItems
-          .filter(item => item.auth !== false)
-          .map(item => (
-            <ListItem key={item.key} disablePadding>
-              <ListItemButton
-                selected={view === item.key}
-                onClick={() => { setView(item.key); setMobileOpen(false); }}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            </ListItem>
-          ))
-        }
+        {menuItems.map(item => (
+          <ListItem key={item.key} disablePadding>
+            <ListItemButton
+              selected={view === item.key}
+              onClick={() => {
+                setView(item.key);
+                setMobileOpen(false);
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          </ListItem>
+        ))}
       </List>
       <Divider />
       <List>
@@ -205,10 +203,13 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <AppBar position="fixed" sx={{
-          zIndex: t => t.zIndex.drawer + 1,
-          ml: { md: `${drawerWidth}px` }
-        }}>
+        <AppBar
+          position="fixed"
+          sx={{
+            zIndex: theme => theme.zIndex.drawer + 1,
+            ml: { md: `${drawerWidth}px` }
+          }}
+        >
           <Toolbar>
             {user && (
               <IconButton
@@ -230,27 +231,44 @@ export default function App() {
         </AppBar>
 
         {user && (
-          <Drawer variant="permanent" open sx={{
-            width: drawerWidth, flexShrink: 0,
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
-          }}>
+          <Drawer
+            variant="permanent"
+            open
+            sx={{
+              width: drawerWidth,
+              flexShrink: 0,
+              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+            }}
+          >
             {drawer}
           </Drawer>
         )}
 
-        <Box component="main" sx={{
-          flexGrow: 1, p: 3, mt: 8,
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
-        }}>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            mt: 8,
+            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
+          }}
+        >
           {!user ? (
-            <Container maxWidth="xs" sx={{
-              mt: 8, display: 'flex',
-              flexDirection: 'column', alignItems: 'center', gap: 2
-            }}>
-              {view === 'login'
-                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-                : <Register showLogin={() => setView('login')} />
-              }
+            <Container
+              maxWidth="xs"
+              sx={{
+                mt: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
+              {view === 'login' ? (
+                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+              ) : (
+                <Register showLogin={() => setView('login')} />
+              )}
             </Container>
           ) : (
             <>
@@ -273,12 +291,14 @@ export default function App() {
                   </Grid>
                   <Grid item xs={12}>
                     <StyledPaper>
-                      <Box sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        mb: 2
-                      }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: 2
+                        }}
+                      >
                         <Typography variant="h6">Atendimentos</Typography>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField
@@ -303,7 +323,6 @@ export default function App() {
                   </Grid>
                 </Grid>
               )}
-
               {view === 'categories' && (
                 <StyledPaper>
                   <CategoryManagement token={token} />

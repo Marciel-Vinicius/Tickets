@@ -7,20 +7,19 @@ function authenticateToken(req, res, next) {
   if (!token) return res.sendStatus(401);
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user; // user.username, user.sector, etc.
+    if (err) return res.sendStatus(401);
+    req.user = user;
     next();
   });
 }
 
 /**
- * Gera um middleware que só deixa passar usuários cujo
- * `req.user.sector` esteja na lista `allowed`.
+ * Retorna um middleware que só deixa passar usuários cujo setor
+ * esteja incluído em allowedSectors (array de strings).
  */
-function authorizeSector(allowed = []) {
+function authorizeSector(allowedSectors) {
   return (req, res, next) => {
-    if (!req.user) return res.sendStatus(401);
-    if (!allowed.includes(req.user.sector)) {
+    if (!req.user || !allowedSectors.includes(req.user.sector)) {
       return res.sendStatus(403);
     }
     next();
