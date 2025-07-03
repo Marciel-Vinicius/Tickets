@@ -1,42 +1,56 @@
+// backend/routes/categories.js
 const express = require('express');
 const { query } = require('../db');
 const router = express.Router();
 
 /*
-  ⚠️ Assegure no banco:
-    ALTER TABLE contatos ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
+  ⚠️ Garanta no seu banco:
+    ALTER TABLE contatos
+      ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
 */
 
-// GET /api/categories
 router.get('/', async (req, res) => {
+    let lojas = [], contatos = [], ocorrencias = [];
+
+    // busca lojas
     try {
-        const { rows: lojasRows } = await query(
+        const { rows } = await query(
             'SELECT nome FROM categorias ORDER BY nome',
             []
         );
-        const { rows: contatosRows } = await query(
+        lojas = Array.isArray(rows) ? rows.map(r => r.nome) : [];
+    } catch (err) {
+        console.error('Erro ao SELECT categorias:', err);
+    }
+
+    // busca contatos (com campo ativo)
+    try {
+        const { rows } = await query(
             'SELECT id, nome, categoria, ativo FROM contatos ORDER BY nome',
             []
         );
-        const { rows: ocorrenciasRows } = await query(
+        contatos = Array.isArray(rows) ? rows : [];
+    } catch (err) {
+        console.error('Erro ao SELECT contatos:', err);
+    }
+
+    // busca ocorrências
+    try {
+        const { rows } = await query(
             'SELECT descricao FROM ocorrencias ORDER BY descricao',
             []
         );
-
-        res.json({
-            lojas: Array.isArray(lojasRows) ? lojasRows.map(r => r.nome) : [],
-            contatos: Array.isArray(contatosRows) ? contatosRows : [],
-            ocorrencias: Array.isArray(ocorrenciasRows)
-                ? ocorrenciasRows.map(r => r.descricao)
-                : []
-        });
+        ocorrencias = Array.isArray(rows)
+            ? rows.map(r => r.descricao)
+            : [];
     } catch (err) {
-        console.error('Erro GET /api/categories:', err);
-        res.status(500).json({ message: 'Erro ao carregar categorias.' });
+        console.error('Erro ao SELECT ocorrencias:', err);
     }
+
+    // responde sempre com arrays válidos
+    res.json({ lojas, contatos, ocorrencias });
 });
 
-// PATCH /api/categories/contatos/:id/inactivate
 router.patch('/contatos/:id/inactivate', async (req, res) => {
     try {
         const { id } = req.params;
@@ -49,7 +63,7 @@ router.patch('/contatos/:id/inactivate', async (req, res) => {
         }
         res.json(result.rows[0]);
     } catch (err) {
-        console.error('Erro PATCH inactivate:', err);
+        console.error('Erro ao inativar contato:', err);
         res.status(500).json({ message: 'Erro ao inativar contato.' });
     }
 });

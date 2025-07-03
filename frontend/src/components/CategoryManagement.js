@@ -21,7 +21,7 @@ export default function CategoryManagement({ token }) {
     const [showInactive, setShowInactive] = useState(false);
     const [feedback, setFeedback] = useState({ type: '', text: '' });
 
-    // carrega categorias, contatos e ocorrências
+    // busca tudo sempre como array
     const fetchAll = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
@@ -167,7 +167,7 @@ export default function CategoryManagement({ token }) {
                             </Button>
                         </Box>
                         <Box component="ul" sx={{ mt: 2 }}>
-                            {Array.isArray(lojas) && lojas.map(l => <li key={l}>{l}</li>)}
+                            {lojas.map(l => <li key={l}>{l}</li>)}
                         </Box>
                     </Paper>
                 </Grid>
@@ -215,33 +215,31 @@ export default function CategoryManagement({ token }) {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {Array.isArray(contatos)
-                                    ? contatos
-                                        .filter(c => showInactive || c.ativo)
-                                        .map(c => (
-                                            <TableRow key={c.id}>
-                                                <TableCell>{c.nome}</TableCell>
-                                                <TableCell>{c.categoria}</TableCell>
-                                                <TableCell>{c.ativo ? 'Sim' : 'Não'}</TableCell>
-                                                <TableCell align="right">
-                                                    {c.ativo && (
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => inactivateContato(c.id)}
-                                                        >
-                                                            <BlockIcon fontSize="small" />
-                                                        </IconButton>
-                                                    )}
+                                {contatos
+                                    .filter(c => showInactive || c.ativo)
+                                    .map(c => (
+                                        <TableRow key={c.id}>
+                                            <TableCell>{c.nome}</TableCell>
+                                            <TableCell>{c.categoria}</TableCell>
+                                            <TableCell>{c.ativo ? 'Sim' : 'Não'}</TableCell>
+                                            <TableCell align="right">
+                                                {c.ativo && (
                                                     <IconButton
                                                         size="small"
-                                                        onClick={() => deleteContato(c.id)}
+                                                        onClick={() => inactivateContato(c.id)}
                                                     >
-                                                        <DeleteIcon fontSize="small" />
+                                                        <BlockIcon fontSize="small" />
                                                     </IconButton>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    : null}
+                                                )}
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => deleteContato(c.id)}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
                             </TableBody>
                         </Table>
                     </Paper>
@@ -264,7 +262,7 @@ export default function CategoryManagement({ token }) {
                             </Button>
                         </Box>
                         <Box component="ul" sx={{ mt: 2 }}>
-                            {Array.isArray(ocorrencias) && ocorrencias.map(o => <li key={o}>{o}</li>)}
+                            {ocorrencias.map(o => <li key={o}>{o}</li>)}
                         </Box>
                     </Paper>
                 </Grid>
