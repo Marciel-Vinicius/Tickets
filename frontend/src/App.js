@@ -4,7 +4,7 @@ import {
   IconButton, Box, Divider, List, ListItem,
   ListItemButton, ListItemIcon, ListItemText,
   Drawer, Container, TextField, Button, Paper,
-  Grid
+  Grid, Alert
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -14,9 +14,10 @@ import PeopleIcon from '@mui/icons-material/People';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import { lightTheme, darkTheme } from './theme';
 
+import { lightTheme, darkTheme } from './theme';
 import API_URL from './config';
+
 import Login from './components/Login';
 import Register from './components/Register';
 import AtendimentoForm from './components/AtendimentoForm';
@@ -46,6 +47,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
+  // Theme
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -54,6 +56,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
+  // Auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -88,8 +91,10 @@ export default function App() {
     setMobileOpen(false);
   };
 
+  // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
+  const [editingAtendimento, setEditingAtendimento] = useState(null);
 
   const fetchAtendimentos = () => {
     if (!token) return;
@@ -134,6 +139,7 @@ export default function App() {
         alert('Falha ao carregar atendimentos.');
       });
   };
+
   useEffect(() => { if (token) fetchAtendimentos(); }, [token]);
 
   const generateReport = () => {
@@ -153,6 +159,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
+  // Drawer menu
   const drawer = (
     <div>
       <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
@@ -302,7 +309,10 @@ export default function App() {
                       <AtendimentoForm
                         token={token}
                         atendente={user.username}
+                        editingAtendimento={editingAtendimento}
                         onAdd={fetchAtendimentos}
+                        onUpdate={fetchAtendimentos}
+                        clearEditing={() => setEditingAtendimento(null)}
                       />
                     </Paper>
                   </Grid>
@@ -335,11 +345,13 @@ export default function App() {
                         atendimentos={atendimentos}
                         token={token}
                         onDelete={fetchAtendimentos}
+                        onEdit={setEditingAtendimento}
                       />
                     </Paper>
                   </Grid>
                 </Grid>
               )}
+
               {view === 'categories' && (
                 <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
                   <CategoryManagement token={token} />
