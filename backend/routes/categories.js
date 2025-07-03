@@ -1,15 +1,15 @@
+// backend/routes/categories.js
 const express = require('express');
 const { query } = require('../db');
 const router = express.Router();
 
 /*
-  ⚠️ Antes de usar:
-  Assegure-se de ter rodado no PostgreSQL:
+  ⚠️ Garanta que o campo "ativo" exista:
     ALTER TABLE contatos ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
 */
 
 // GET /api/categories
-// — Retorna lojas (nomes), contatos (com campo ativo) e ocorrências
+// — Retorna lojas, contatos (com campo ativo) e ocorrências
 router.get('/', async (req, res) => {
     try {
         const { rows: lojasRows } = await query(
@@ -25,12 +25,9 @@ router.get('/', async (req, res) => {
             []
         );
 
-        const lojas = Array.isArray(lojasRows)
-            ? lojasRows.map(r => r.nome)
-            : [];
-        const contatos = Array.isArray(contatosRows)
-            ? contatosRows
-            : [];
+        // Garante sempre arrays
+        const lojas = Array.isArray(lojasRows) ? lojasRows.map(r => r.nome) : [];
+        const contatos = Array.isArray(contatosRows) ? contatosRows : [];
         const ocorrencias = Array.isArray(ocorrenciasRows)
             ? ocorrenciasRows.map(r => r.descricao)
             : [];
