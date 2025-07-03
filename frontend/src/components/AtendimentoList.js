@@ -1,75 +1,79 @@
 // frontend/src/components/AtendimentoList.js
-import React from 'react';
-import API_URL from '../config';
-import { DataGrid } from '@mui/x-data-grid';
-import { IconButton, Box } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import React, { useState, useEffect } from 'react';
+import {
+  Paper, Box, Typography, Table,
+  TableHead, TableRow, TableCell,
+  TableBody, IconButton
+} from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import API_URL from '../config';
 
-export default function AtendimentoList({
-  atendimentos,
-  token,
-  onDelete,
-  onEdit
-}) {
-  const handleDelete = id =>
+export default function AtendimentoList({ token }) {
+  const [items, setItems] = useState([]);
+
+  const fetchItems = () => {
+    fetch(`${API_URL}/api/atendimentos`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => r.json())
+      .then(data => setItems(data));
+  };
+
+  useEffect(fetchItems, [token]);
+
+  const handleDelete = id => {
+    if (!window.confirm('Confirma exclusão?')) return;
     fetch(`${API_URL}/api/atendimentos/${id}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + token }
-    }).then(onDelete);
+    }).then(fetchItems);
+  };
 
-  const columns = [
-    { field: 'atendente', headerName: 'Atendente', flex: 1, minWidth: 120 },
-    { field: 'setor', headerName: 'Setor', flex: 1, minWidth: 100 },
-    {
-      field: 'dia',
-      headerName: 'Data',
-      flex: 1,
-      minWidth: 120,
-      renderCell: ({ row }) => {
-        if (!row.dia) return '';
-        const [y, m, d] = row.dia.split('T')[0].split('-');
-        return `${d}/${m}/${y}`;
-      }
-    },
-    { field: 'horaInicio', headerName: 'Início', flex: 0.7, minWidth: 100 },
-    { field: 'horaFim', headerName: 'Término', flex: 0.7, minWidth: 100 },
-    { field: 'loja', headerName: 'Loja', flex: 1, minWidth: 120 },
-    { field: 'contato', headerName: 'Contato', flex: 1, minWidth: 150 },
-    { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 200 },
-    { field: 'observacao', headerName: 'Observação', flex: 1, minWidth: 120, sortable: false },
-    {
-      field: 'actions',
-      headerName: 'Ações',
-      flex: 0.5,
-      sortable: false,
-      renderCell: params => (
-        <>
-          <IconButton onClick={() => onEdit(params.row)}>
-            <EditIcon color="primary" />
-          </IconButton>
-          <IconButton onClick={() => handleDelete(params.row.id)}>
-            <DeleteIcon color="error" />
-          </IconButton>
-        </>
-      )
-    }
-  ];
+  const handleEdit = id => {
+    // reutilize a lógica existente de edição
+  };
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <DataGrid
-        rows={atendimentos}
-        columns={columns}
-        getRowId={row => row.id}
-        pageSize={5}
-        rowsPerPageOptions={[5, 10, 25, 100]}
-        disableSelectionOnClick
-        autoHeight
-        initialState={{
-          sorting: { sortModel: [{ field: 'dia', sort: 'asc' }] }
-        }}
-      />
-    </Box>
+    <Paper>
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>Lista de Atendimentos</Typography>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Atendente</TableCell>
+              <TableCell>Data</TableCell>
+              <TableCell>Início</TableCell>
+              <TableCell>Fim</TableCell>
+              <TableCell>Loja</TableCell>
+              <TableCell>Contato</TableCell>
+              <TableCell>Ocorrência</TableCell>
+              <TableCell align="right">Ações</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.map(row => (
+              <TableRow key={row.id} hover>
+                <TableCell>{row.atendente}</TableCell>
+                <TableCell>{row.dia}</TableCell>
+                <TableCell>{row.hora_inicio}</TableCell>
+                <TableCell>{row.hora_fim}</TableCell>
+                <TableCell>{row.loja}</TableCell>
+                <TableCell>{row.contato}</TableCell>
+                <TableCell>{row.ocorrencia}</TableCell>
+                <TableCell align="right">
+                  <IconButton onClick={() => handleEdit(row.id)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(row.id)}>
+                    <DeleteIcon color="error" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+    </Paper>
   );
 }
