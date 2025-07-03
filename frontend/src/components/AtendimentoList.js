@@ -9,7 +9,7 @@ export default function AtendimentoList({ token }) {
   const [rows, setRows] = useState([]);
   const [pageSize, setPageSize] = useState(10);
 
-  // Busca os atendimentos
+  // busca todos os atendimentos
   useEffect(() => {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -17,16 +17,20 @@ export default function AtendimentoList({ token }) {
       .then(res => (res.ok ? res.json() : Promise.reject()))
       .then(data =>
         setRows(
-          data.map(item => ({
-            id: item.id,
-            atendente: item.atendente,
-            data: new Date(item.dia).toLocaleDateString('pt-BR'),
-            horaInicio: item.hora_inicio,
-            horaFim: item.hora_fim,
-            loja: item.loja,
-            contato: item.contato,
-            ocorrencia: item.ocorrencia
-          }))
+          data.map(item => {
+            // item.dia vem como 'YYYY-MM-DD'
+            const [year, month, day] = item.dia.split('-');
+            return {
+              id: item.id,
+              atendente: item.atendente,
+              data: `${day}/${month}/${year}`,
+              horaInicio: item.hora_inicio,
+              horaFim: item.hora_fim,
+              loja: item.loja,
+              contato: item.contato,
+              ocorrencia: item.ocorrencia
+            };
+          })
         )
       )
       .catch(() => alert('Falha ao carregar atendimentos.'));
@@ -47,9 +51,8 @@ export default function AtendimentoList({ token }) {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        // Ajuste o cálculo abaixo conforme a altura do seu header e form
-        height: 'calc(100vh - 260px)',
-        width: '100%',
+        height: 'calc(100vh - 260px)', // ajuste para seu header+form
+        width: '100%'
       }}
     >
       <DataGrid
