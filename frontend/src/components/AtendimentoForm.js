@@ -2,51 +2,42 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Stack
+  Box, TextField, Button, Typography,
+  FormControl, InputLabel, Select, MenuItem, Stack
 } from '@mui/material';
 
-export default function AtendimentoForm({
-  onAdd,
-  token,
-  atendente,
-  editingAtendimento,
-  onEditComplete
-}) {
+export default function AtendimentoForm({ onAdd, token, atendente }) {
   const today = new Date().toISOString().split('T')[0];
-  const initialForm = {
+  const [form, setForm] = useState({
     dia: today,
     horaInicio: '',
     horaFim: '',
     loja: '',
     contato: '',
-    ocorrencia: '',
-    observacao: ''
-  };
-  const [form, setForm] = useState(initialForm);
+    ocorrencia: ''
+  });
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
+  // Carrega opções de categorias
   useEffect(() => {
-    if (editingAtendimento) {
-      setForm({
-        dia: editingAtendimento.dia.split('T')[0],
-        horaInicio: editingAtendimento.horaInicio,
-        horaFim: editingAtendimento.horaFim,
-        loja: editingAtendimento.loja,
-        contato: editingAtendimento.contato,
-        ocorrencia: editingAtendimento.ocorrencia,
-        observacao: editingAtendimento.observacao || ''
-      });
-    } else {
-      setForm(initialForm);
-    }
-  }, [editingAtendimento]);
+    fetch(`${API_URL}/api/categories`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => r.json())
+      .then(data =>
+        setOpts({
+          lojas: data.lojas,
+          contatos: data.contatos,
+          ocorrencias: data.ocorrencias
+        })
+      )
+      .catch(console.error);
+  }, [token]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+  };
 
   const isValid =
     form.dia &&
@@ -56,111 +47,145 @@ export default function AtendimentoForm({
     form.contato &&
     form.ocorrencia;
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    const method = editingAtendimento ? 'PUT' : 'POST';
-    const url = editingAtendimento
-      ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
-      : `${API_URL}/api/atendimentos`;
-    fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
-      },
-      body: JSON.stringify({
-        atendente,
-        dia: form.dia,
-        horaInicio: form.horaInicio,
-        horaFim: form.horaFim,
-        loja: form.loja,
-        contato: form.contato,
-        ocorrencia: form.ocorrencia,
-        observacao: form.observacao
-      })
-    })
-      .then(() => {
-        onAdd();
-        if (editingAtendimento) onEditComplete();
-        setForm(initialForm);
-      })
-      .catch(console.error);
+    if (!isValid) return;
+
+    // Monta o body explicitamente
+    const body = {
+      atendente,
+      dia: form.dia,
+      horaInicio: form.horaInicio,
+      horaFim: form.horaFim,
+      loja: form.loja,
+      contato: form.contato,
+      ocorrencia: form.ocorrencia
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/api/atendimentos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        // lê a mensagem de erro em texto bruto
+        const text = await res.text();
+        alert(`Erro ao cadastrar: ${res.status} ${text}`);
+        return;
+      }
+      // sucesso → limpa e atualiza a lista
+      setForm({
+        dia: today,
+        horaInicio: '',
+        horaFim: '',
+        loja: '',
+        contato: '',
+        ocorrencia: ''
+      });
+      onAdd();
+    } catch {
+      alert('Erro de conexão ao servidor');
+    }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        {editingAtendimento ? 'Editar Atendimento' : 'Novo Atendimento'}
-      </Typography>
+    <Box component="form" onSubmit={handleSubmit}>
       <Stack spacing={2}>
+        <Typography variant="h6" align="center">Novo Atendimento</Typography>
+        <TextField
+          label="Atendente"
+          value={atendente}
+          disabled
+          fullWidth
+        />
         <TextField
           label="Data"
+          name="dia"
           type="date"
           value={form.dia}
-          onChange={e => setForm(f => ({ ...f, dia: e.target.value }))}
+          onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
+          required
         />
         <TextField
-          label="Início"
+          label="Hora de Início"
+          name="horaInicio"
           type="time"
           value={form.horaInicio}
-          onChange={e => setForm(f => ({ ...f, horaInicio: e.target.value }))}
+          onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
+          required
         />
         <TextField
-          label="Término"
+          label="Hora de Término"
+          name="horaFim"
           type="time"
           value={form.horaFim}
-          onChange={e => setForm(f => ({ ...f, horaFim: e.target.value }))}
+          onChange={handleChange}
           InputLabelProps={{ shrink: true }}
+          fullWidth
+          required
         />
-        <FormControl>
-          <InputLabel>Loja</InputLabel>
+
+        <FormControl fullWidth required>
+          <InputLabel id="loja-label">Loja</InputLabel>
           <Select
+            labelId="loja-label"
+            name="loja"
             value={form.loja}
             label="Loja"
-            onChange={e => setForm(f => ({ ...f, loja: e.target.value }))}
+            onChange={handleChange}
           >
-            {/* carregar opções de lojas */}
+            {opts.lojas.map(loja => (
+              <MenuItem key={loja} value={loja}>{loja}</MenuItem>
+            ))}
           </Select>
         </FormControl>
-        <FormControl>
-          <InputLabel>Contato</InputLabel>
+
+        <FormControl fullWidth required>
+          <InputLabel id="contato-label">Contato</InputLabel>
           <Select
+            labelId="contato-label"
+            name="contato"
             value={form.contato}
             label="Contato"
-            onChange={e => setForm(f => ({ ...f, contato: e.target.value }))}
+            onChange={handleChange}
           >
-            {/* carregar opções de contatos */}
+            {opts.contatos.map(c => (
+              <MenuItem key={c} value={c}>{c}</MenuItem>
+            ))}
           </Select>
         </FormControl>
-        <FormControl>
-          <InputLabel>Ocorrência</InputLabel>
+
+        <FormControl fullWidth required>
+          <InputLabel id="ocorrencia-label">Ocorrência</InputLabel>
           <Select
+            labelId="ocorrencia-label"
+            name="ocorrencia"
             value={form.ocorrencia}
             label="Ocorrência"
-            onChange={e => setForm(f => ({ ...f, ocorrencia: e.target.value }))}
+            onChange={handleChange}
           >
-            {/* carregar opções de ocorrências */}
+            {opts.ocorrencias.map(o => (
+              <MenuItem key={o} value={o}>{o}</MenuItem>
+            ))}
           </Select>
         </FormControl>
-        <TextField
-          label="Observação"
-          value={form.observacao}
-          onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))}
-          multiline
-          rows={2}
-        />
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {editingAtendimento && (
-            <Button variant="outlined" onClick={onEditComplete}>
-              Cancelar
-            </Button>
-          )}
-          <Button type="submit" variant="contained" disabled={!isValid}>
-            {editingAtendimento ? 'Salvar' : 'Cadastrar'}
-          </Button>
-        </Box>
+
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={!isValid}
+          fullWidth
+        >
+          Cadastrar
+        </Button>
       </Stack>
     </Box>
   );

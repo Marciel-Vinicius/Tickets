@@ -13,7 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function CategoryManagement({ token }) {
     const [tab, setTab] = useState('lojas');
-    const [data, setData] = useState({});
+    const [data, setData] = useState([]);
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ oldValue: '', value: '' });
 
@@ -22,24 +22,18 @@ export default function CategoryManagement({ token }) {
             headers: { Authorization: 'Bearer ' + token }
         })
             .then(r => r.json())
-            .then(setData)
+            .then(obj => setData(obj[tab]))
             .catch(console.error);
     };
+    useEffect(fetchData, [tab]);
 
-    useEffect(fetchData, []);
-
-    const handleAdd = () => {
-        setCurrent({ oldValue: '', value: '' });
-        setOpen(true);
-    };
-    const handleEdit = v => {
-        setCurrent({ oldValue: v, value: v });
-        setOpen(true);
-    };
-    const handleInactivate = v => {
-        if (!window.confirm('Confirma inativação?')) return;
-        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}/inactivate`, {
-            method: 'PATCH',
+    const handleChangeTab = (_, newVal) => setTab(newVal);
+    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
+    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
+    const handleDelete = v => {
+        if (!window.confirm('Confirma exclusão?')) return;
+        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
+            method: 'DELETE',
             headers: { Authorization: 'Bearer ' + token }
         }).then(fetchData);
     };
@@ -57,16 +51,14 @@ export default function CategoryManagement({ token }) {
                 Authorization: 'Bearer ' + token
             },
             body: JSON.stringify({ value: current.value })
-        })
-            .then(() => {
-                setOpen(false);
-                fetchData();
-            })
-            .catch(console.error);
+        }).then(() => {
+            setOpen(false);
+            fetchData();
+        });
     };
 
     const columns = [
-        { field: 'value', headerName: 'Valor', flex: 1, minWidth: 150 },
+        { field: 'value', headerName: 'Valor', flex: 1 },
         {
             field: 'actions',
             headerName: 'Ações',
@@ -77,8 +69,8 @@ export default function CategoryManagement({ token }) {
                     <IconButton onClick={() => handleEdit(params.row.value)}>
                         <EditIcon />
                     </IconButton>
-                    <IconButton onClick={() => handleInactivate(params.row.value)}>
-                        <DeleteIcon color="warning" />
+                    <IconButton onClick={() => handleDelete(params.row.value)}>
+                        <DeleteIcon color="error" />
                     </IconButton>
                 </>
             )
@@ -87,42 +79,42 @@ export default function CategoryManagement({ token }) {
 
     return (
         <Box>
-            <Typography variant="h6">Categorias</Typography>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
+            <Tabs value={tab} onChange={handleChangeTab}>
                 <Tab label="Lojas" value="lojas" />
                 <Tab label="Contatos" value="contatos" />
                 <Tab label="Ocorrências" value="ocorrencias" />
             </Tabs>
-            <Button variant="contained" onClick={handleAdd} sx={{ my: 1 }}>
-                Adicionar
-            </Button>
+
+            <Box sx={{ mt: 2, mb: 2 }}>
+                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
+            </Box>
+
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
-                    rows={(data[tab] || []).map(v => ({ id: v, value: v }))}
+                    rows={data.map(v => ({ id: v, value: v }))}
                     columns={columns}
-                    getRowId={row => row.id}
+                    pageSize={5}
+                    rowsPerPageOptions={[5]}
                 />
             </div>
 
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'} {tab}
+                    {current.oldValue ? 'Editar' : 'Adicionar'}
+                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
                 </DialogTitle>
-                <DialogContent>
+                <DialogContent sx={{ mt: 1 }}>
                     <TextField
                         label="Valor"
                         value={current.value}
-                        onChange={e =>
-                            setCurrent(p => ({ ...p, value: e.target.value }))
-                        }
+                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
                         fullWidth
                     />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">
-                        Salvar
-                    </Button>
+                    <Button onClick={handleSave} variant="contained">Salvar</Button>
                 </DialogActions>
             </Dialog>
         </Box>
