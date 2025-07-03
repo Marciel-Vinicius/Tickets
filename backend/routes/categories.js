@@ -8,14 +8,35 @@ const types = ['lojas', 'contatos', 'ocorrencias'];
 
 router.use(authorizeSector('DEV'));
 
-// GET todas
+// GET todas (por padrão, somente contatos ativos)
 router.get('/', async (req, res) => {
     const result = {};
     for (let t of types) {
-        const { rows } = await query(`SELECT value FROM ${t} ORDER BY value`, []);
-        result[t] = rows.map(r => r.value);
+        if (t === 'contatos') {
+            const { rows } = await query(
+                'SELECT value FROM contatos WHERE ativo = TRUE ORDER BY value',
+                []
+            );
+            result[t] = rows.map(r => r.value);
+        } else {
+            const { rows } = await query(
+                `SELECT value FROM ${t} ORDER BY value`,
+                []
+            );
+            result[t] = rows.map(r => r.value);
+        }
     }
     res.json(result);
+});
+
+// PUT Inativar contato
+router.put('/contatos/:value/inativar', async (req, res) => {
+    const { value } = req.params;
+    await query(
+        'UPDATE contatos SET ativo = FALSE WHERE value = $1',
+        [value]
+    );
+    res.sendStatus(204);
 });
 
 // POST nova

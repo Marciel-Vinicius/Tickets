@@ -25,6 +25,7 @@ export default function CategoryManagement({ token }) {
             .then(obj => setData(obj[tab]))
             .catch(console.error);
     };
+
     useEffect(fetchData, [tab]);
 
     const handleChangeTab = (_, newVal) => setTab(newVal);
@@ -36,6 +37,13 @@ export default function CategoryManagement({ token }) {
             method: 'DELETE',
             headers: { Authorization: 'Bearer ' + token }
         }).then(fetchData);
+    };
+    const handleInactivate = v => {
+        if (!window.confirm('Confirma inativar este contato?')) return;
+        fetch(`${API_URL}/api/categories/contatos/${encodeURIComponent(v)}/inativar`, {
+            method: 'PUT',
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(fetchData).catch(console.error);
     };
 
     const handleSave = () => {
@@ -62,7 +70,7 @@ export default function CategoryManagement({ token }) {
         {
             field: 'actions',
             headerName: 'Ações',
-            flex: 0.5,
+            flex: tab === 'contatos' ? 1 : 0.5,
             sortable: false,
             renderCell: params => (
                 <>
@@ -72,6 +80,16 @@ export default function CategoryManagement({ token }) {
                     <IconButton onClick={() => handleDelete(params.row.value)}>
                         <DeleteIcon color="error" />
                     </IconButton>
+                    {tab === 'contatos' && (
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleInactivate(params.row.value)}
+                            sx={{ ml: 1 }}
+                        >
+                            Inativar
+                        </Button>
+                    )}
                 </>
             )
         }
@@ -101,8 +119,7 @@ export default function CategoryManagement({ token }) {
 
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'}
-                    {` ${tab.charAt(0).toUpperCase() + tab.slice(1, -1)}`}
+                    {current.oldValue ? 'Editar' : 'Adicionar'} {tab}
                 </DialogTitle>
                 <DialogContent sx={{ mt: 1 }}>
                     <TextField
