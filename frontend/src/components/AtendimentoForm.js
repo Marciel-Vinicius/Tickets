@@ -18,9 +18,12 @@ export default function AtendimentoForm({
   editingAtendimento,
   clearEditing
 }) {
+  // calcula a data de hoje em YYYY-MM-DD
+  const today = new Date().toISOString().split('T')[0];
+
   const [form, setForm] = useState({
     atendente: userAtendente || '',
-    dia: '',
+    dia: today,
     horaInicio: '',
     horaFim: '',
     loja: '',
@@ -29,7 +32,7 @@ export default function AtendimentoForm({
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carrega categorias
+  // carrega categorias (lojas, contatos, ocorrências)
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -39,7 +42,7 @@ export default function AtendimentoForm({
       .catch(console.error);
   }, [token]);
 
-  // sempre que mudar editingAtendimento ou login, ajusta form
+  // quando editingAtendimento muda, preenche ou reseta form
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -52,17 +55,17 @@ export default function AtendimentoForm({
         ocorrencia: editingAtendimento.ocorrencia
       });
     } else {
-      setForm({
-        atendente: userAtendente,
-        dia: '',
+      setForm(f => ({
+        ...f,
+        dia: today,
         horaInicio: '',
         horaFim: '',
         loja: '',
         contato: '',
         ocorrencia: ''
-      });
+      }));
     }
-  }, [editingAtendimento, userAtendente]);
+  }, [editingAtendimento, today]);
 
   const handleChange = e => {
     const { name, value } = e.target;
@@ -94,10 +97,18 @@ export default function AtendimentoForm({
       body: JSON.stringify(payload)
     })
       .then(r => {
-        if (!r.ok) return Promise.reject();
+        if (!r.ok) throw new Error();
         clearEditing && clearEditing();
         editingAtendimento ? onUpdate() : onAdd();
-        setForm(f => ({ ...f, dia: '', horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
+        setForm(f => ({
+          ...f,
+          dia: today,
+          horaInicio: '',
+          horaFim: '',
+          loja: '',
+          contato: '',
+          ocorrencia: ''
+        }));
       })
       .catch(() => alert('Erro ao salvar atendimento.'));
   };
@@ -126,7 +137,6 @@ export default function AtendimentoForm({
           label="Atendente"
           value={form.atendente}
           disabled
-          fullWidth
           sx={{ flex: '1 1 200px' }}
         />
         <TextField

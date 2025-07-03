@@ -1,82 +1,71 @@
 // frontend/src/components/AtendimentoList.js
 import React, { useState, useEffect } from 'react';
+import { Box, useTheme } from '@mui/material';
 import {
-  Paper,
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  IconButton
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+  DataGrid,
+  GridToolbarQuickFilter
+} from '@mui/x-data-grid';
 import API_URL from '../config';
 
 export default function AtendimentoList({ token }) {
-  const [items, setItems] = useState([]);
+  const theme = useTheme();
+  const [rows, setRows] = useState([]);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchItems = () => {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(data => setItems(data))
+      .then(data =>
+        setRows(
+          data.map(item => ({
+            id: item.id,
+            atendente: item.atendente,
+            data: new Date(item.dia).toLocaleDateString('pt-BR'),
+            horaInicio: item.hora_inicio,
+            horaFim: item.hora_fim,
+            loja: item.loja,
+            contato: item.contato,
+            ocorrencia: item.ocorrencia
+          }))
+        )
+      )
       .catch(() => alert('Falha ao carregar atendimentos.'));
   };
 
   useEffect(fetchItems, [token]);
 
-  const handleDelete = id => {
-    if (!window.confirm('Confirma exclusão?')) return;
-    fetch(`${API_URL}/api/atendimentos/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + token }
-    }).then(fetchItems);
-  };
+  const columns = [
+    { field: 'atendente', headerName: 'Atendente', flex: 1 },
+    { field: 'data', headerName: 'Data', flex: 1 },
+    { field: 'horaInicio', headerName: 'Início', flex: 1 },
+    { field: 'horaFim', headerName: 'Fim', flex: 1 },
+    { field: 'loja', headerName: 'Loja', flex: 2 },
+    { field: 'contato', headerName: 'Contato', flex: 2 },
+    { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2 }
+    // você pode adicionar colunas de Ações aqui se quiser
+  ];
 
   return (
-    <Paper elevation={0}>
-      <Table>
-        <TableHead>
-          <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
-            <TableCell>Atendente</TableCell>
-            <TableCell>Data</TableCell>
-            <TableCell>Início</TableCell>
-            <TableCell>Fim</TableCell>
-            <TableCell>Loja</TableCell>
-            <TableCell>Contato</TableCell>
-            <TableCell>Ocorrência</TableCell>
-            <TableCell align="right">Ações</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map(row => (
-            <TableRow key={row.id} hover>
-              <TableCell>{row.atendente}</TableCell>
-              {/* data formatada dd/mm/aaaa */}
-              <TableCell>
-                {new Date(row.dia).toLocaleDateString('pt-BR')}
-              </TableCell>
-              <TableCell>{row.hora_inicio}</TableCell>
-              <TableCell>{row.hora_fim}</TableCell>
-              <TableCell>{row.loja}</TableCell>
-              <TableCell>{row.contato}</TableCell>
-              <TableCell>{row.ocorrencia}</TableCell>
-              <TableCell align="right">
-                <IconButton onClick={() => {/* abra edição */ }}>
-                  <EditIcon />
-                </IconButton>
-                <IconButton onClick={() => handleDelete(row.id)}>
-                  <DeleteIcon color="error" />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
+    <Box sx={{ height: 500, width: '100%', background: theme.palette.background.paper }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        pageSize={pageSize}
+        onPageSizeChange={newSize => setPageSize(newSize)}
+        rowsPerPageOptions={[5, 10, 20]}
+        pagination
+        components={{ Toolbar: GridToolbarQuickFilter }}
+        sx={{
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: theme.palette.background.paper
+          },
+          '& .MuiDataGrid-virtualScroller': {
+            backgroundColor: theme.palette.background.default
+          }
+        }}
+      />
+    </Box>
   );
 }
