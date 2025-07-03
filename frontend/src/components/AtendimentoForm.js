@@ -101,7 +101,7 @@ export default function AtendimentoForm({
   };
 
   return (
-    <Paper elevation={3} sx={{ width: '100%' }}>
+    <Paper elevation={3} sx={{ width: '200%' }}>
       <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
           {editingAtendimento ? 'Editar Atendimento' : 'Cadastrar Atendimento'}
