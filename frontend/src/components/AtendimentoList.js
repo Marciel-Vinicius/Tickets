@@ -4,37 +4,31 @@ import { Box, useTheme } from '@mui/material';
 import { DataGrid, GridToolbar, GridActionsCellItem } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import API_URL from '../config';
+import apiFetch from '../api';
 
 export default function AtendimentoList({ token, onEdit, onDelete }) {
   const theme = useTheme();
   const [rows, setRows] = useState([]);
   const [pageSize, setPageSize] = useState(10);
 
-  // carrega todos os atendimentos
   useEffect(() => {
-    fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
+    apiFetch('/atendimentos')
       .then(data =>
-        setRows(
-          data.map(item => {
-            const [y, m, d] = item.dia.split('-');
-            return {
-              id: item.id,
-              atendente: item.atendente,
-              data: `${d}/${m}/${y}`,
-              horaInicio: item.hora_inicio,
-              horaFim: item.hora_fim,
-              loja: item.loja,
-              contato: item.contato,
-              ocorrencia: item.ocorrencia
-            };
-          })
-        )
+        setRows(data.map(item => {
+          const [y, m, d] = item.dia.split('-');
+          return {
+            id: item.id,
+            atendente: item.atendente,
+            data: `${d}/${m}/${y}`,
+            horaInicio: item.hora_inicio,
+            horaFim: item.hora_fim,
+            loja: item.loja,
+            contato: item.contato,
+            ocorrencia: item.ocorrencia
+          };
+        }))
       )
-      .catch(() => alert('Falha ao carregar atendimentos.'));
+      .catch(err => { if (err.message !== 'Unauthorized') alert(err.message); });
   }, [token]);
 
   const columns = [
@@ -61,39 +55,31 @@ export default function AtendimentoList({ token, onEdit, onDelete }) {
           key="delete"
           icon={<DeleteIcon color="error" />}
           label="Excluir"
-          onClick={() => {
-            if (window.confirm('Confirma exclusão?')) onDelete(params.row.id);
-          }}
+          onClick={() => onDelete(params.row.id)}
         />
       ]
     }
   ];
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: 'calc(100vh - 260px)', // ajuste para seu AppBar+form
-        width: '100%'
-      }}
-    >
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 260px)',
+      width: '100%'
+    }}>
       <DataGrid
         rows={rows}
         columns={columns}
         pageSize={pageSize}
         onPageSizeChange={newSize => setPageSize(newSize)}
-        rowsPerPageOptions={[5, 10, 20, 50, 100]}
+        rowsPerPageOptions={[5, 10, 20, 50]}
         pagination
         components={{ Toolbar: GridToolbar }}
         sx={{
           flex: 1,
-          '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: theme.palette.action.hover
-          },
-          '& .MuiDataGrid-virtualScroller': {
-            backgroundColor: theme.palette.background.default
-          }
+          '& .MuiDataGrid-columnHeaders': { backgroundColor: theme.palette.action.hover },
+          '& .MuiDataGrid-virtualScroller': { backgroundColor: theme.palette.background.default }
         }}
       />
     </Box>
