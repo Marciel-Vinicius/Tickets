@@ -1,15 +1,13 @@
-// backend/routes/categories.js
 const express = require('express');
 const { query } = require('../db');
 const router = express.Router();
 
 /*
-  ⚠️ Garanta que o campo "ativo" exista:
+  ⚠️ Assegure no banco:
     ALTER TABLE contatos ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
 */
 
 // GET /api/categories
-// — Retorna lojas, contatos (com campo ativo) e ocorrências
 router.get('/', async (req, res) => {
     try {
         const { rows: lojasRows } = await query(
@@ -25,14 +23,13 @@ router.get('/', async (req, res) => {
             []
         );
 
-        // Garante sempre arrays
-        const lojas = Array.isArray(lojasRows) ? lojasRows.map(r => r.nome) : [];
-        const contatos = Array.isArray(contatosRows) ? contatosRows : [];
-        const ocorrencias = Array.isArray(ocorrenciasRows)
-            ? ocorrenciasRows.map(r => r.descricao)
-            : [];
-
-        res.json({ lojas, contatos, ocorrencias });
+        res.json({
+            lojas: Array.isArray(lojasRows) ? lojasRows.map(r => r.nome) : [],
+            contatos: Array.isArray(contatosRows) ? contatosRows : [],
+            ocorrencias: Array.isArray(ocorrenciasRows)
+                ? ocorrenciasRows.map(r => r.descricao)
+                : []
+        });
     } catch (err) {
         console.error('Erro GET /api/categories:', err);
         res.status(500).json({ message: 'Erro ao carregar categorias.' });
@@ -40,7 +37,6 @@ router.get('/', async (req, res) => {
 });
 
 // PATCH /api/categories/contatos/:id/inactivate
-// — Marca um contato como inativo
 router.patch('/contatos/:id/inactivate', async (req, res) => {
     try {
         const { id } = req.params;
@@ -53,7 +49,7 @@ router.patch('/contatos/:id/inactivate', async (req, res) => {
         }
         res.json(result.rows[0]);
     } catch (err) {
-        console.error('Erro PATCH /api/categories/contatos/:id/inactivate:', err);
+        console.error('Erro PATCH inactivate:', err);
         res.status(500).json({ message: 'Erro ao inativar contato.' });
     }
 });

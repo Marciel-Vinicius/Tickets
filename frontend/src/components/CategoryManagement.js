@@ -21,19 +21,25 @@ export default function CategoryManagement({ token }) {
     const [showInactive, setShowInactive] = useState(false);
     const [feedback, setFeedback] = useState({ type: '', text: '' });
 
-    // Carrega dados e garante sempre arrays
+    // Carrega dados e garante sempre arrays válidos
     const fetchAll = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
         })
-            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(r => {
+                if (!r.ok) throw new Error(`Status ${r.status}`);
+                return r.json();
+            })
             .then(data => {
                 setLojas(Array.isArray(data.lojas) ? data.lojas : []);
                 setContatos(Array.isArray(data.contatos) ? data.contatos : []);
-                setOcorrencias(Array.isArray(data.ocorrencias) ? data.ocorrencias : []);
+                setOcorrencias(Array.isArray(data.ocorrencias) ? data.ocorrencies : []);
             })
             .catch(err => {
-                console.error(err);
+                console.error('Erro ao carregar categorias:', err);
+                setLojas([]);
+                setContatos([]);
+                setOcorrencias([]);
                 setFeedback({ type: 'error', text: 'Erro ao carregar dados.' });
             });
     };
@@ -43,8 +49,8 @@ export default function CategoryManagement({ token }) {
     // Feedback some após 3s
     useEffect(() => {
         if (!feedback.text) return;
-        const t = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
-        return () => clearTimeout(t);
+        const timer = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
+        return () => clearTimeout(timer);
     }, [feedback]);
 
     const addLoja = () => {
@@ -143,7 +149,7 @@ export default function CategoryManagement({ token }) {
             )}
 
             <Grid container spacing={4}>
-                {/* Lojas */}
+                {/* Seção de Lojas */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: 2 }}>
                         <Typography variant="subtitle1">Nova Loja</Typography>
@@ -160,14 +166,13 @@ export default function CategoryManagement({ token }) {
                             </Button>
                         </Box>
                         <Box component="ul" sx={{ mt: 2 }}>
-                            {lojas?.map(l => (
-                                <li key={l}>{l}</li>
-                            ))}
+                            {Array.isArray(lojas) &&
+                                lojas.map(l => <li key={l}>{l}</li>)}
                         </Box>
                     </Paper>
                 </Grid>
 
-                {/* Contatos */}
+                {/* Seção de Contatos */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: 2 }}>
                         <Typography variant="subtitle1">Novo Contato (Vendedor)</Typography>
@@ -210,37 +215,39 @@ export default function CategoryManagement({ token }) {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {contatos
-                                    ?.filter(c => showInactive || c.ativo)
-                                    ?.map(c => (
-                                        <TableRow key={c.id}>
-                                            <TableCell>{c.nome}</TableCell>
-                                            <TableCell>{c.categoria}</TableCell>
-                                            <TableCell>{c.ativo ? 'Sim' : 'Não'}</TableCell>
-                                            <TableCell align="right">
-                                                {c.ativo && (
+                                {Array.isArray(contatos)
+                                    ? contatos
+                                        .filter(c => showInactive || c.ativo)
+                                        .map(c => (
+                                            <TableRow key={c.id}>
+                                                <TableCell>{c.nome}</TableCell>
+                                                <TableCell>{c.categoria}</TableCell>
+                                                <TableCell>{c.ativo ? 'Sim' : 'Não'}</TableCell>
+                                                <TableCell align="right">
+                                                    {c.ativo && (
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => inactivateContato(c.id)}
+                                                        >
+                                                            <BlockIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
                                                     <IconButton
                                                         size="small"
-                                                        onClick={() => inactivateContato(c.id)}
+                                                        onClick={() => deleteContato(c.id)}
                                                     >
-                                                        <BlockIcon fontSize="small" />
+                                                        <DeleteIcon fontSize="small" />
                                                     </IconButton>
-                                                )}
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => deleteContato(c.id)}
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    : null}
                             </TableBody>
                         </Table>
                     </Paper>
                 </Grid>
 
-                {/* Ocorrências */}
+                {/* Seção de Ocorrências */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: 2 }}>
                         <Typography variant="subtitle1">Nova Ocorrência</Typography>
@@ -257,9 +264,8 @@ export default function CategoryManagement({ token }) {
                             </Button>
                         </Box>
                         <Box component="ul" sx={{ mt: 2 }}>
-                            {ocorrencias?.map(o => (
-                                <li key={o}>{o}</li>
-                            ))}
+                            {Array.isArray(ocorrencias) &&
+                                ocorrencias.map(o => <li key={o}>{o}</li>)}
                         </Box>
                     </Paper>
                 </Grid>

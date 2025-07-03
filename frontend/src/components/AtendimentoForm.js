@@ -1,9 +1,9 @@
-// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-  Box, TextField, Button, Typography,
-  FormControl, InputLabel, Select, MenuItem, Stack, Alert
+  Box, TextField, Button,
+  FormControl, InputLabel, Select, MenuItem,
+  Stack, Alert, Typography
 } from '@mui/material';
 
 export default function AtendimentoForm({ onAdd, token, atendente }) {
@@ -23,7 +23,6 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
   });
   const [feedback, setFeedback] = useState({ type: '', text: '' });
 
-  // Carrega opções e garante arrays válidos
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -48,11 +47,10 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       });
   }, [token]);
 
-  // Feedback some após 3s
   useEffect(() => {
     if (!feedback.text) return;
-    const t = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setFeedback({ type: '', text: '' }), 3000);
+    return () => clearTimeout(timer);
   }, [feedback]);
 
   const isValid =
@@ -72,15 +70,6 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       setFeedback({ type: 'error', text: '❌ Preencha todos os campos.' });
       return;
     }
-    const body = {
-      atendente,
-      dia: form.dia,
-      horaInicio: form.horaInicio,
-      horaFim: form.horaFim,
-      loja: form.loja,
-      contato: form.contato,
-      ocorrencia: form.ocorrencia
-    };
     try {
       const res = await fetch(`${API_URL}/api/atendimentos`, {
         method: 'POST',
@@ -88,10 +77,18 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          atendente,
+          dia: form.dia,
+          horaInicio: form.horaInicio,
+          horaFim: form.horaFim,
+          loja: form.loja,
+          contato: form.contato,
+          ocorrencia: form.ocorrencia
+        })
       });
       if (!res.ok) throw new Error(`Status ${res.status}`);
-      setFeedback({ type: 'success', text: '✅ Atendimento salvo com sucesso!' });
+      setFeedback({ type: 'success', text: '✅ Atendimento salvo!' });
       setForm({
         dia: today,
         horaInicio: '',
@@ -102,22 +99,20 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
       });
       onAdd();
     } catch (err) {
-      console.error('Erro no submit:', err);
+      console.error('Erro ao salvar atendimento:', err);
       setFeedback({ type: 'error', text: '❌ Erro ao salvar. Tente novamente.' });
     }
   };
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>
+      <Typography variant="h6">Novo Atendimento</Typography>
       {feedback.text && (
         <Alert severity={feedback.type} sx={{ mb: 2 }}>
           {feedback.text}
         </Alert>
       )}
-
       <Stack spacing={2}>
-        <Typography variant="h6">Novo Atendimento</Typography>
-
         <TextField
           label="Atendente"
           name="atendente"
@@ -136,7 +131,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           required
         />
         <TextField
-          label="Hora de Início"
+          label="Hora Início"
           name="horaInicio"
           type="time"
           value={form.horaInicio}
@@ -146,7 +141,7 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
           required
         />
         <TextField
-          label="Hora de Término"
+          label="Hora Término"
           name="horaFim"
           type="time"
           value={form.horaFim}
@@ -165,11 +160,12 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
             label="Loja"
             onChange={handleChange}
           >
-            {opts.lojas.map(loja => (
-              <MenuItem key={loja} value={loja}>
-                {loja}
-              </MenuItem>
-            ))}
+            {Array.isArray(opts.lojas) &&
+              opts.lojas.map(loja => (
+                <MenuItem key={loja} value={loja}>
+                  {loja}
+                </MenuItem>
+              ))}
           </Select>
         </FormControl>
 
@@ -182,11 +178,12 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
             label="Contato"
             onChange={handleChange}
           >
-            {opts.contatos.map(c => (
-              <MenuItem key={c} value={c}>
-                {c}
-              </MenuItem>
-            ))}
+            {Array.isArray(opts.contatos) &&
+              opts.contatos.map(c => (
+                <MenuItem key={c.id || c} value={c.nome || c}>
+                  {c.nome || c}
+                </MenuItem>
+              ))}
           </Select>
         </FormControl>
 
@@ -199,20 +196,16 @@ export default function AtendimentoForm({ onAdd, token, atendente }) {
             label="Ocorrência"
             onChange={handleChange}
           >
-            {opts.ocorrencias.map(o => (
-              <MenuItem key={o} value={o}>
-                {o}
-              </MenuItem>
-            ))}
+            {Array.isArray(opts.ocorrencias) &&
+              opts.ocorrencias.map(o => (
+                <MenuItem key={o} value={o}>
+                  {o}
+                </MenuItem>
+              ))}
           </Select>
         </FormControl>
 
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={!isValid}
-          fullWidth
-        >
+        <Button type="submit" variant="contained" disabled={!isValid}>
           Cadastrar
         </Button>
       </Stack>
