@@ -1,12 +1,12 @@
 // backend/routes/categories.js
 const express = require('express');
-const { authorizeSector } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { query } = require('../db');
-
 const router = express.Router();
 const types = ['lojas', 'contatos', 'ocorrencias'];
 
-router.use(authorizeSector('DEV'));
+// Agora apenas autenticação — SAF e DEV podem mexer em categorias
+router.use(authenticateToken);
 
 // GET todas (por padrão, somente contatos ativos)
 router.get('/', async (req, res) => {
@@ -27,6 +27,15 @@ router.get('/', async (req, res) => {
         }
     }
     res.json(result);
+});
+
+// PUT Inativar contato
+router.put('/contatos/:value/inativar', async (req, res) => {
+    await query(
+        'UPDATE contatos SET ativo = FALSE WHERE value = $1',
+        [req.params.value]
+    );
+    res.sendStatus(204);
 });
 
 // PUT Inativar contato
@@ -64,5 +73,6 @@ router.delete('/:type/:value', async (req, res) => {
     await query(`DELETE FROM ${type} WHERE value=$1`, [value]);
     res.sendStatus(204);
 });
+
 
 module.exports = router;
