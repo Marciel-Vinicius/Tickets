@@ -1,10 +1,7 @@
 // frontend/src/components/AtendimentoList.js
 import React, { useState, useEffect } from 'react';
 import { Box, useTheme } from '@mui/material';
-import {
-  DataGrid,
-  GridToolbar
-} from '@mui/x-data-grid';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import API_URL from '../config';
 
 export default function AtendimentoList({ token }) {
@@ -12,6 +9,7 @@ export default function AtendimentoList({ token }) {
   const [rows, setRows] = useState([]);
   const [pageSize, setPageSize] = useState(10);
 
+  // buscar dados
   useEffect(() => {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -45,9 +43,17 @@ export default function AtendimentoList({ token }) {
   ];
 
   return (
-    <Box sx={{ width: '100%' }}>
+    // Box que ocupa toda a área restante da viewport
+    <Box
+      sx={{
+        width: '100%',
+        height: 'calc(100vh - 300px)', // ajuste esse valor conforme seu header+form
+        '& .MuiDataGrid-root': {
+          border: 0
+        }
+      }}
+    >
       <DataGrid
-        autoHeight
         rows={rows}
         columns={columns}
         pageSize={pageSize}
@@ -56,7 +62,7 @@ export default function AtendimentoList({ token }) {
         pagination
         components={{ Toolbar: GridToolbar }}
         sx={{
-          width: '100%',
+          backgroundColor: theme.palette.background.paper,
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: theme.palette.action.hover
           },
