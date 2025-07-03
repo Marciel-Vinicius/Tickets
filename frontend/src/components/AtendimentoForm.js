@@ -1,25 +1,52 @@
 // frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import {
-  Paper, Box, Grid, TextField,
-  Button, Typography, MenuItem
+  Paper,
+  Box,
+  Grid,
+  TextField,
+  MenuItem,
+  Button,
+  Typography
 } from '@mui/material';
 import API_URL from '../config';
 
-export default function AtendimentoForm({ token, onAdd }) {
+export default function AtendimentoForm({ token, onAdd, onUpdate, editingAtendimento, clearEditing }) {
   const [form, setForm] = useState({
-    atendente: '', dia: '', horaInicio: '',
-    horaFim: '', loja: '', contato: '', ocorrencia: ''
+    atendente: '',
+    dia: '',
+    horaInicio: '',
+    horaFim: '',
+    loja: '',
+    contato: '',
+    ocorrencia: ''
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
+  // carrega opções de categorias
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => r.json())
-      .then(data => setOpts(data));
+      .then(data => setOpts(data))
+      .catch(console.error);
   }, [token]);
+
+  // se veio para editar, pré-enche form
+  useEffect(() => {
+    if (editingAtendimento) {
+      setForm({
+        atendente: editingAtendimento.atendente || '',
+        dia: editingAtendimento.dia || '',
+        horaInicio: editingAtendimento.horaInicio || '',
+        horaFim: editingAtendimento.horaFim || '',
+        loja: editingAtendimento.loja || '',
+        contato: editingAtendimento.contato || '',
+        ocorrencia: editingAtendimento.ocorrencia || ''
+      });
+    }
+  }, [editingAtendimento]);
 
   const handleChange = e => {
     const { name, value } = e.target;
@@ -28,130 +55,158 @@ export default function AtendimentoForm({ token, onAdd }) {
 
   const handleSubmit = e => {
     e.preventDefault();
-    fetch(`${API_URL}/api/atendimentos`, {
-      method: 'POST',
+    const payload = {
+      atendente: form.atendente,
+      dia: form.dia,
+      horaInicio: form.horaInicio,
+      horaFim: form.horaFim,
+      loja: form.loja,
+      contato: form.contato,
+      ocorrencia: form.ocorrencia
+    };
+    const url = editingAtendimento
+      ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
+      : `${API_URL}/api/atendimentos`;
+    const method = editingAtendimento ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method,
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + token
       },
-      body: JSON.stringify({
-        atendente: form.atendente,
-        dia: form.dia,
-        horaInicio: form.horaInicio,
-        horaFim: form.horaFim,
-        loja: form.loja,
-        contato: form.contato,
-        ocorrencia: form.ocorrencia
+      body: JSON.stringify(payload)
+    })
+      .then(r => {
+        if (!r.ok) return Promise.reject();
+        clearEditing && clearEditing();
+        onAdd ? onAdd() : onUpdate();
+        setForm({
+          atendente: '',
+          dia: '',
+          horaInicio: '',
+          horaFim: '',
+          loja: '',
+          contato: '',
+          ocorrencia: ''
+        });
       })
-    }).then(() => {
-      setForm({ atendente: '', dia: '', horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' });
-      onAdd();
-    });
+      .catch(() => alert('Erro ao salvar atendimento.'));
   };
 
   return (
-    <Paper>
+    <Paper elevation={3}>
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}
+        sx={{ p: 3 }}
       >
-        <Typography variant="h6">Cadastrar Atendimento</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+        <Typography variant="h6" gutterBottom>
+          {editingAtendimento ? 'Editar Atendimento' : 'Cadastrar Atendimento'}
+        </Typography>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={2}>
             <TextField
+              fullWidth
+              required
               label="Atendente"
               name="atendente"
               value={form.atendente}
               onChange={handleChange}
-              fullWidth
-              required
             />
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={12} md={2}>
             <TextField
+              fullWidth
+              required
               label="Data"
               name="dia"
               type="date"
-              value={form.dia}
               InputLabelProps={{ shrink: true }}
+              value={form.dia}
               onChange={handleChange}
-              fullWidth
-              required
             />
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={6} md={2}>
             <TextField
+              fullWidth
+              required
               label="Hora Início"
               name="horaInicio"
               type="time"
-              value={form.horaInicio}
               InputLabelProps={{ shrink: true }}
+              value={form.horaInicio}
               onChange={handleChange}
-              fullWidth
-              required
             />
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={6} md={2}>
             <TextField
+              fullWidth
+              required
               label="Hora Fim"
               name="horaFim"
               type="time"
-              value={form.horaFim}
               InputLabelProps={{ shrink: true }}
+              value={form.horaFim}
               onChange={handleChange}
-              fullWidth
-              required
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4} md={1}>
             <TextField
+              fullWidth
               select
               label="Loja"
               name="loja"
               value={form.loja}
               onChange={handleChange}
-              fullWidth
-              required
             >
               {opts.lojas.map(loja => (
-                <MenuItem key={loja} value={loja}>{loja}</MenuItem>
+                <MenuItem key={loja} value={loja}>
+                  {loja}
+                </MenuItem>
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4} md={1}>
             <TextField
+              fullWidth
               select
               label="Contato"
               name="contato"
               value={form.contato}
               onChange={handleChange}
-              fullWidth
-              required
             >
               {opts.contatos.map(c => (
-                <MenuItem key={c} value={c}>{c}</MenuItem>
+                <MenuItem key={c} value={c}>
+                  {c}
+                </MenuItem>
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4} md={1}>
             <TextField
+              fullWidth
               select
               label="Ocorrência"
               name="ocorrencia"
               value={form.ocorrencia}
               onChange={handleChange}
-              fullWidth
-              required
             >
               {opts.ocorrencias.map(o => (
-                <MenuItem key={o} value={o}>{o}</MenuItem>
+                <MenuItem key={o} value={o}>
+                  {o}
+                </MenuItem>
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6} display="flex" justifyContent="flex-end" alignItems="center">
-            <Button type="submit" variant="contained" size="large">
-              Cadastrar
+          <Grid item xs={12} md={2}>
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              size="large"
+            >
+              {editingAtendimento ? 'Atualizar' : 'Cadastrar'}
             </Button>
           </Grid>
         </Grid>
