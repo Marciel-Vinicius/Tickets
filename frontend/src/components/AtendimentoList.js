@@ -9,7 +9,7 @@ export default function AtendimentoList({ token }) {
   const [rows, setRows] = useState([]);
   const [pageSize, setPageSize] = useState(10);
 
-  // buscar dados
+  // Busca os atendimentos
   useEffect(() => {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -43,14 +43,13 @@ export default function AtendimentoList({ token }) {
   ];
 
   return (
-    // Box que ocupa toda a área restante da viewport
     <Box
       sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        // Ajuste o cálculo abaixo conforme a altura do seu header e form
+        height: 'calc(100vh - 260px)',
         width: '100%',
-        height: 'calc(100vh - 300px)', // ajuste esse valor conforme seu header+form
-        '& .MuiDataGrid-root': {
-          border: 0
-        }
       }}
     >
       <DataGrid
@@ -58,11 +57,11 @@ export default function AtendimentoList({ token }) {
         columns={columns}
         pageSize={pageSize}
         onPageSizeChange={newSize => setPageSize(newSize)}
-        rowsPerPageOptions={[5, 10, 20, 50]}
+        rowsPerPageOptions={[5, 10, 20, 50, 100]}
         pagination
         components={{ Toolbar: GridToolbar }}
         sx={{
-          backgroundColor: theme.palette.background.paper,
+          flex: 1,
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: theme.palette.action.hover
           },
