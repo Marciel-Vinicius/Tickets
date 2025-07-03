@@ -1,29 +1,30 @@
 // frontend/src/components/AtendimentoList.js
 import React, { useState, useEffect } from 'react';
 import { Box, useTheme } from '@mui/material';
-import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import { DataGrid, GridToolbar, GridActionsCellItem } from '@mui/x-data-grid';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import API_URL from '../config';
 
-export default function AtendimentoList({ token }) {
+export default function AtendimentoList({ token, onEdit, onDelete }) {
   const theme = useTheme();
   const [rows, setRows] = useState([]);
   const [pageSize, setPageSize] = useState(10);
 
-  // busca todos os atendimentos
+  // carrega todos os atendimentos
   useEffect(() => {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(res => (res.ok ? res.json() : Promise.reject()))
+      .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(data =>
         setRows(
           data.map(item => {
-            // item.dia vem como 'YYYY-MM-DD'
-            const [year, month, day] = item.dia.split('-');
+            const [y, m, d] = item.dia.split('-');
             return {
               id: item.id,
               atendente: item.atendente,
-              data: `${day}/${month}/${year}`,
+              data: `${d}/${m}/${y}`,
               horaInicio: item.hora_inicio,
               horaFim: item.hora_fim,
               loja: item.loja,
@@ -43,7 +44,29 @@ export default function AtendimentoList({ token }) {
     { field: 'horaFim', headerName: 'Fim', flex: 1, minWidth: 120 },
     { field: 'loja', headerName: 'Loja', flex: 2, minWidth: 150 },
     { field: 'contato', headerName: 'Contato', flex: 2, minWidth: 150 },
-    { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 150 }
+    { field: 'ocorrencia', headerName: 'Ocorrência', flex: 2, minWidth: 150 },
+    {
+      field: 'actions',
+      type: 'actions',
+      headerName: 'Ações',
+      width: 100,
+      getActions: params => [
+        <GridActionsCellItem
+          key="edit"
+          icon={<EditIcon />}
+          label="Editar"
+          onClick={() => onEdit(params.row)}
+        />,
+        <GridActionsCellItem
+          key="delete"
+          icon={<DeleteIcon color="error" />}
+          label="Excluir"
+          onClick={() => {
+            if (window.confirm('Confirma exclusão?')) onDelete(params.row.id);
+          }}
+        />
+      ]
+    }
   ];
 
   return (
@@ -51,7 +74,7 @@ export default function AtendimentoList({ token }) {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 260px)', // ajuste para seu header+form
+        height: 'calc(100vh - 260px)', // ajuste para seu AppBar+form
         width: '100%'
       }}
     >

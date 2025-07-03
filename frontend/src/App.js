@@ -116,6 +116,7 @@ export default function App() {
   // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
+  const [editingAtendimento, setEditingAtendimento] = useState(null);
 
   const fetchAtendimentos = () => {
     if (!token) return;
@@ -132,6 +133,14 @@ export default function App() {
       fetchAtendimentos();
     }
   }, [token]);
+
+  const handleDelete = id => {
+    if (!window.confirm('Confirma exclusão?')) return;
+    fetch(`${API_URL}/api/atendimentos/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token }
+    }).then(() => fetchAtendimentos());
+  };
 
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
@@ -150,7 +159,6 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Drawer menu
   const drawer = (
     <>
       <Toolbar>
@@ -216,7 +224,7 @@ export default function App() {
               <IconButton
                 color="inherit"
                 edge="start"
-                onClick={() => setMobileOpen(open => !open)}
+                onClick={() => setMobileOpen(o => !o)}
                 sx={{ mr: 2, display: { md: 'none' } }}
               >
                 <MenuIcon />
@@ -281,8 +289,13 @@ export default function App() {
                       <AtendimentoForm
                         token={token}
                         atendente={user.username}
+                        editingAtendimento={editingAtendimento}
                         onAdd={fetchAtendimentos}
-                        onUpdate={fetchAtendimentos}
+                        onUpdate={() => {
+                          fetchAtendimentos();
+                          setEditingAtendimento(null);
+                        }}
+                        clearEditing={() => setEditingAtendimento(null)}
                       />
                     </StyledPaper>
                   </Grid>
@@ -312,14 +325,30 @@ export default function App() {
                           </Button>
                         </Box>
                       </Box>
-                      <AtendimentoList token={token} />
+                      <AtendimentoList
+                        token={token}
+                        onEdit={row => setEditingAtendimento(row)}
+                        onDelete={handleDelete}
+                      />
                     </StyledPaper>
                   </Grid>
                 </Grid>
               )}
-              {view === 'categories' && <StyledPaper><CategoryManagement token={token} /></StyledPaper>}
-              {view === 'users' && <StyledPaper><UserManagement token={token} /></StyledPaper>}
-              {view === 'reports' && <StyledPaper><ReportDashboard token={token} /></StyledPaper>}
+              {view === 'categories' && (
+                <StyledPaper>
+                  <CategoryManagement token={token} />
+                </StyledPaper>
+              )}
+              {view === 'users' && (
+                <StyledPaper>
+                  <UserManagement token={token} />
+                </StyledPaper>
+              )}
+              {view === 'reports' && (
+                <StyledPaper>
+                  <ReportDashboard token={token} />
+                </StyledPaper>
+              )}
             </>
           )}
         </Box>

@@ -5,7 +5,7 @@ const PDFDocument = require('pdfkit');
 const { query } = require('../db');
 const router = express.Router();
 
-// Listar atendimentos (dia como TEXT no formato YYYY-MM-DD)
+// Lista TODOS os atendimentos
 router.get('/', async (req, res) => {
   try {
     const { rows } = await query(
@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Criar atendimento
+// Cria novo atendimento
 router.post('/', async (req, res) => {
   try {
     const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Atualizar atendimento
+// Atualiza um atendimento existente
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -62,7 +62,8 @@ router.put('/:id', async (req, res) => {
       `UPDATE atendimentos SET
          atendente=$1, setor=$2, dia=$3, hora_inicio=$4, hora_fim=$5,
          loja=$6, contato=$7, ocorrencia=$8
-       WHERE id=$9 RETURNING
+       WHERE id=$9
+       RETURNING
          id,
          atendente,
          setor,
@@ -84,7 +85,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Deletar atendimento
+// Deleta um atendimento
 router.delete('/:id', async (req, res) => {
   try {
     await query('DELETE FROM atendimentos WHERE id=$1', [req.params.id]);
@@ -95,7 +96,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Gerar relatório em PDF
+// Gera PDF de relatório
 router.get('/report', async (req, res) => {
   try {
     const { date } = req.query;
@@ -111,7 +112,6 @@ router.get('/report', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="plantao-${date}.pdf"`);
     doc.pipe(res);
 
-    // Cabeçalho
     doc.font('Helvetica-Bold').fontSize(14)
       .text(`PLANTONISTA: ${req.user.username}`);
     doc.moveDown(0.5);
@@ -120,7 +120,6 @@ router.get('/report', async (req, res) => {
       .text(`Data: ${d}/${m}/${y}`);
     doc.moveDown();
 
-    // Tabela
     const top = doc.y;
     doc.font('Helvetica-Bold').fontSize(10)
       .text('H.Início', 50, top)
@@ -139,15 +138,14 @@ router.get('/report', async (req, res) => {
       doc.moveDown();
     });
 
-    // Assinaturas
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const labelY = footerY - 15;
     const lineW = 210;
-    doc.font('Helvetica').fontSize(12);
-    doc.text('Ass. Plantonista', 50, labelY);
-    doc.moveTo(50, footerY).lineTo(50 + lineW, footerY).stroke();
-    doc.text('Ass. Supervisor', 350, labelY);
-    doc.moveTo(350, footerY).lineTo(350 + lineW, footerY).stroke();
+    doc.font('Helvetica').fontSize(12)
+      .text('Ass. Plantonista', 50, labelY)
+      .moveTo(50, footerY).lineTo(50 + lineW, footerY).stroke()
+      .text('Ass. Supervisor', 350, labelY)
+      .moveTo(350, footerY).lineTo(350 + lineW, footerY).stroke();
 
     doc.end();
   } catch (err) {

@@ -13,14 +13,12 @@ import API_URL from '../config';
 export default function AtendimentoForm({
   token,
   atendente: userAtendente,
+  editingAtendimento,
   onAdd,
   onUpdate,
-  editingAtendimento,
   clearEditing
 }) {
-  // calcula a data de hoje em YYYY-MM-DD
   const today = new Date().toISOString().split('T')[0];
-
   const [form, setForm] = useState({
     atendente: userAtendente || '',
     dia: today,
@@ -32,17 +30,17 @@ export default function AtendimentoForm({
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carrega categorias (lojas, contatos, ocorrências)
+  // carrega categorias
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(r => r.json())
-      .then(data => setOpts(data))
+      .then(setOpts)
       .catch(console.error);
   }, [token]);
 
-  // quando editingAtendimento muda, preenche ou reseta form
+  // preenche form ao editar, ou reseta componente
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -55,15 +53,7 @@ export default function AtendimentoForm({
         ocorrencia: editingAtendimento.ocorrencia
       });
     } else {
-      setForm(f => ({
-        ...f,
-        dia: today,
-        horaInicio: '',
-        horaFim: '',
-        loja: '',
-        contato: '',
-        ocorrencia: ''
-      }));
+      setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
     }
   }, [editingAtendimento, today]);
 
@@ -83,10 +73,11 @@ export default function AtendimentoForm({
       contato: form.contato,
       ocorrencia: form.ocorrencia
     };
-    const url = editingAtendimento
+    const isEdit = Boolean(editingAtendimento);
+    const url = isEdit
       ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
       : `${API_URL}/api/atendimentos`;
-    const method = editingAtendimento ? 'PUT' : 'POST';
+    const method = isEdit ? 'PUT' : 'POST';
 
     fetch(url, {
       method,
@@ -98,17 +89,9 @@ export default function AtendimentoForm({
     })
       .then(r => {
         if (!r.ok) throw new Error();
-        clearEditing && clearEditing();
-        editingAtendimento ? onUpdate() : onAdd();
-        setForm(f => ({
-          ...f,
-          dia: today,
-          horaInicio: '',
-          horaFim: '',
-          loja: '',
-          contato: '',
-          ocorrencia: ''
-        }));
+        clearEditing();
+        isEdit ? onUpdate() : onAdd();
+        setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
       })
       .catch(() => alert('Erro ao salvar atendimento.'));
   };
