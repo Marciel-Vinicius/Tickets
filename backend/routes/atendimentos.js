@@ -1,11 +1,10 @@
-// backend/routes/atendimentos.js
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const PDFDocument = require('pdfkit');
 const { query } = require('../db');
 const router = express.Router();
 
-// Lista TODOS os atendimentos
+// Listar TODOS os atendimentos
 router.get('/', async (req, res) => {
   try {
     const { rows } = await query(
@@ -32,7 +31,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Cria novo atendimento
+// Criar novo atendimento
 router.post('/', async (req, res) => {
   try {
     const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
@@ -45,65 +44,61 @@ router.post('/', async (req, res) => {
        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [id, atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia]
     );
-    res.status(201).json({ id, atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia });
+    res.status(201).json({ message: 'Atendimento criado com sucesso.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Erro ao cadastrar atendimento.' });
+    res.status(500).json({ message: 'Erro ao criar atendimento.' });
   }
 });
 
-// Atualiza um atendimento existente
+// Editar atendimento
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
-    const setor = req.user.sector;
-    const result = await query(
-      `UPDATE atendimentos SET
-         atendente=$1, setor=$2, dia=$3, hora_inicio=$4, hora_fim=$5,
-         loja=$6, contato=$7, ocorrencia=$8
-       WHERE id=$9
-       RETURNING
-         id,
-         atendente,
-         setor,
-         to_char(dia,'YYYY-MM-DD') AS dia,
-         hora_inicio,
-         hora_fim,
-         loja,
-         contato,
-         ocorrencia`,
-      [atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
+    await query(
+      `UPDATE atendimentos
+        SET atendente=$1, dia=$2, hora_inicio=$3, hora_fim=$4,
+            loja=$5, contato=$6, ocorrencia=$7
+        WHERE id=$8`,
+      [atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
     );
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Atendimento não encontrado.' });
-    }
-    res.json(result.rows[0]);
+    res.json({ message: 'Atendimento atualizado com sucesso.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erro ao atualizar atendimento.' });
   }
 });
 
-// Deleta um atendimento
+// Deletar atendimento
 router.delete('/:id', async (req, res) => {
   try {
-    await query('DELETE FROM atendimentos WHERE id=$1', [req.params.id]);
-    res.sendStatus(204);
+    const { id } = req.params;
+    await query(
+      `DELETE FROM atendimentos WHERE id = $1`,
+      [id]
+    );
+    res.json({ message: 'Atendimento removido com sucesso.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Erro ao deletar atendimento.' });
+    res.status(500).json({ message: 'Erro ao remover atendimento.' });
   }
 });
 
-// Gera PDF de relatório
-router.get('/report', async (req, res) => {
+// Exportar relatório em PDF (corrigido)
+router.get('/report/:date', async (req, res) => {
+  const date = req.params.date;
   try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ message: 'Parâmetro "date" é obrigatório.' });
-
     const { rows: items } = await query(
-      'SELECT * FROM atendimentos WHERE dia=$1 ORDER BY hora_inicio',
+      `SELECT
+        hora_inicio,
+        hora_fim,
+        loja,
+        contato,
+        ocorrencia
+      FROM atendimentos
+      WHERE to_char(dia, 'YYYY-MM-DD') = $1
+      ORDER BY hora_inicio ASC`,
       [date]
     );
 
@@ -115,29 +110,47 @@ router.get('/report', async (req, res) => {
     doc.font('Helvetica-Bold').fontSize(14)
       .text(`PLANTONISTA: ${req.user.username}`);
     doc.moveDown(0.5);
+
     const [y, m, d] = date.split('-');
     doc.font('Helvetica').fontSize(12)
       .text(`Data: ${d}/${m}/${y}`);
     doc.moveDown();
 
-    const top = doc.y;
+    // Cabeçalho
+    const startY = doc.y;
     doc.font('Helvetica-Bold').fontSize(10)
-      .text('H.Início', 50, top)
-      .text('Loja', 130, top)
-      .text('Contato', 260, top)
-      .text('Ocorrência', 380, top);
-    doc.moveDown();
+      .text('H.Início', 40, startY)
+      .text('H.Fim', 100, startY)
+      .text('Loja', 160, startY, { width: 90, continued: false })
+      .text('Contato', 260, startY, { width: 90, continued: false })
+      .text('Ocorrência', 360, startY, { width: 200, continued: false });
+    doc.moveDown(0.5);
 
+    // Dados das linhas
     items.forEach(item => {
-      const startY = doc.y;
+      const linhaY = doc.y;
       doc.font('Helvetica').fontSize(10)
-        .text(item.hora_inicio, 50, startY)
-        .text(item.loja, 130, startY)
-        .text(item.contato, 260, startY)
-        .text(item.ocorrencia, 380, startY);
-      doc.moveDown();
+        .text(item.hora_inicio, 40, linhaY)
+        .text(item.hora_fim || '-', 100, linhaY)
+        .text(item.loja, 160, linhaY, { width: 90, ellipsis: true })
+        .text(item.contato, 260, linhaY, { width: 90, ellipsis: true })
+        .text(item.ocorrencia, 360, linhaY, { width: 200, ellipsis: true });
+
+      // Corrige o Y para a próxima linha, considerando altura de texto em cada coluna
+      const nextY = Math.max(
+        doc.y,
+        linhaY +
+        Math.max(
+          doc.heightOfString(item.loja, { width: 90 }),
+          doc.heightOfString(item.contato, { width: 90 }),
+          doc.heightOfString(item.ocorrencia, { width: 200 })
+        )
+      );
+      doc.y = nextY;
+      doc.moveDown(0.5);
     });
 
+    // Rodapé com assinatura
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const labelY = footerY - 15;
     const lineW = 210;
@@ -150,9 +163,8 @@ router.get('/report', async (req, res) => {
     doc.end();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Erro ao gerar relatório.' });
+    res.status(500).json({ message: 'Erro ao gerar PDF.' });
   }
 });
 
 module.exports = router;
-// Cria
