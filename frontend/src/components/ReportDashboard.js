@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Box, Typography, Grid, Card, CardContent, CircularProgress
+    Box, Typography, Grid, Card, CardContent, CircularProgress, Button, TextField
 } from '@mui/material';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -9,10 +9,16 @@ import {
 import API_URL from '../config';
 
 export default function ReportDashboard({ token }) {
-    const [summary, setSummary] = useState(null);
+    const [summary, setSummary] = useState({});
     const [byUser, setByUser] = useState([]);
     const [byDay, setByDay] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Estado para data selecionada (default: hoje)
+    const [reportDate, setReportDate] = useState(() => {
+        const today = new Date();
+        return today.toISOString().slice(0, 10); // yyyy-mm-dd
+    });
 
     useEffect(() => {
         Promise.all([
@@ -34,6 +40,12 @@ export default function ReportDashboard({ token }) {
         });
     }, [token]);
 
+    // Função para baixar PDF
+    const handleDownloadReport = () => {
+        if (!reportDate) return;
+        window.open(`${API_URL}/api/atendimentos/report/${reportDate}`, '_blank');
+    };
+
     if (loading) return (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
             <CircularProgress />
@@ -44,11 +56,30 @@ export default function ReportDashboard({ token }) {
         <Box>
             <Typography variant="h5" gutterBottom>Painel de Relatórios</Typography>
 
+            <Box sx={{ my: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                    label="Data do Relatório"
+                    type="date"
+                    size="small"
+                    value={reportDate}
+                    onChange={e => setReportDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleDownloadReport}
+                    disabled={!reportDate}
+                >
+                    Baixar Relatório PDF
+                </Button>
+            </Box>
+
             <Grid container spacing={3}>
                 {[
-                    { title: 'Tempo Médio', value: summary.averageTime },
-                    { title: 'Total Atend.', value: summary.total },
-                    { title: 'Top Atendente', value: `${summary.topAttendant} (${summary.topCount})` }
+                    { title: 'Tempo Médio', value: summary?.averageTime || '-' },
+                    { title: 'Total Atend.', value: summary?.total || 0 },
+                    { title: 'Top Atendente', value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : '-' }
                 ].map((c, i) => (
                     <Grid key={i} item xs={12} md={4}>
                         <Card>
@@ -88,4 +119,3 @@ export default function ReportDashboard({ token }) {
         </Box>
     );
 }
-// Cria
