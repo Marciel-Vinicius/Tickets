@@ -12,6 +12,31 @@ const COLORS = [
     "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b"
 ];
 
+// Legenda customizada para PieChart
+function CustomLegend(props) {
+    const { payload } = props;
+    return (
+        <ul style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            fontSize: 12,
+            lineHeight: "16px",
+            maxHeight: 90,
+            overflowY: "auto"
+        }}>
+            {payload && payload.map((entry, i) => (
+                <li key={`item-${i}`} style={{ color: entry.color, marginBottom: 2 }}>
+                    <span style={{ marginRight: 6, verticalAlign: "middle" }}>■</span>
+                    {entry.value.length > 18
+                        ? entry.value.slice(0, 16) + "..."
+                        : entry.value}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 function CardChart({ title, children }) {
     return (
         <Paper elevation={3} sx={{
@@ -71,7 +96,7 @@ export default function ReportDashboard({ token }) {
         </Box>
     );
 
-    // Limita tamanho das legendas
+    // Limita tamanho das legendas de fatias
     const formatPieLabel = (value) =>
         value.length > 13 ? value.slice(0, 10) + '...' : value;
 
@@ -153,7 +178,7 @@ export default function ReportDashboard({ token }) {
                                     {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip />
-                                <Legend layout="vertical" align="right" verticalAlign="middle" />
+                                <Legend content={<CustomLegend />} />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardChart>
@@ -174,7 +199,7 @@ export default function ReportDashboard({ token }) {
                                     {byOccurrence.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip />
-                                <Legend layout="vertical" align="right" verticalAlign="middle" />
+                                <Legend content={<CustomLegend />} />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardChart>
