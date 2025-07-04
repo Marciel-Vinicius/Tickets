@@ -1,56 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Paper,
-  Box,
-  TextField,
-  MenuItem,
-  Button,
-  Typography
+  Paper, Box, TextField, MenuItem,
+  Button, Typography
 } from '@mui/material';
-import API_URL from '../config';
+import apiFetch from '../api';
 
 export default function AtendimentoForm({
   token,
-  atendente: userAtendente,
+  atendente: userAtt,
   editingAtendimento,
   onAdd,
   onUpdate,
   clearEditing
 }) {
   const today = new Date().toISOString().split('T')[0];
-
-  // inicializa opts sempre como arrays vazios
-  const [opts, setOpts] = useState({
-    lojas: [],
-    contatos: [],
-    ocorrencias: []
-  });
-
-  // carrega categorias COM token no header
-  useEffect(() => {
-    if (!token) return;
-    fetch(`${API_URL}/api/categories`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => {
-        if (r.status === 401) {
-          // token inválido: redireciona para login
-          return window.location.href = '/';
-        }
-        if (!r.ok) return Promise.reject();
-        return r.json();
-      })
-      .then(data => setOpts(data))
-      .catch(err => {
-        console.error('Falha ao carregar categorias', err);
-        // garante que opts fique sempre definido
-        setOpts({ lojas: [], contatos: [], ocorrencias: [] });
-      });
-  }, [token]);
-
-  // o resto do form continua igual, usando opts.lojas, etc...
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
   const [form, setForm] = useState({
-    atendente: userAtendente || '',
+    atendente: userAtt || '',
     dia: today,
     horaInicio: '',
     horaFim: '',
@@ -59,6 +25,15 @@ export default function AtendimentoForm({
     ocorrencia: ''
   });
 
+  // load categories once
+  useEffect(() => {
+    if (!token) return;
+    apiFetch('/categories')
+      .then(setOpts)
+      .catch(console.error);
+  }, [token]);
+
+  // when editing
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -91,35 +66,23 @@ export default function AtendimentoForm({
       contato: form.contato,
       ocorrencia: form.ocorrencia
     };
-    const isEdit = Boolean(editingAtendimento);
+    const isEdit = !!editingAtendimento;
     const url = isEdit
-      ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
-      : `${API_URL}/api/atendimentos`;
+      ? `/atendimentos/${editingAtendimento.id}`
+      : '/atendimentos';
     const method = isEdit ? 'PUT' : 'POST';
 
-    fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
-      },
-      body: JSON.stringify(payload)
-    })
-      .then(r => {
-        if (r.status === 401) return window.location.href = '/';
-        if (!r.ok) return Promise.reject();
-        return r.json();
-      })
+    apiFetch(url, { method, body: payload })
       .then(() => {
-        clearEditing && clearEditing();
+        clearEditing?.();
         isEdit ? onUpdate() : onAdd();
         setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
       })
-      .catch(() => alert('Erro ao salvar atendimento.'));
+      .catch(err => alert(err.message));
   };
 
   return (
-    <Paper elevation={3} sx={{ width: '100%' }}>
+    <Paper elevation={3}>
       <Box
         component="form"
         onSubmit={handleSubmit}
@@ -127,8 +90,8 @@ export default function AtendimentoForm({
           p: 3,
           display: 'flex',
           flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 2
+          gap: 2,
+          alignItems: 'center'
         }}
       >
         <Box sx={{ width: '100%' }}>
@@ -182,10 +145,8 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.lojas.map(loja => (
-            <MenuItem key={loja} value={loja}>
-              {loja}
-            </MenuItem>
+          {opts.lojas.map(l => (
+            <MenuItem key={l} value={l}>{l}</MenuItem>
           ))}
         </TextField>
         <TextField
@@ -197,9 +158,7 @@ export default function AtendimentoForm({
           sx={{ flex: '1 1 150px' }}
         >
           {opts.contatos.map(c => (
-            <MenuItem key={c} value={c}>
-              {c}
-            </MenuItem>
+            <MenuItem key={c} value={c}>{c}</MenuItem>
           ))}
         </TextField>
         <TextField
@@ -211,9 +170,7 @@ export default function AtendimentoForm({
           sx={{ flex: '1 1 150px' }}
         >
           {opts.ocorrencias.map(o => (
-            <MenuItem key={o} value={o}>
-              {o}
-            </MenuItem>
+            <MenuItem key={o} value={o}>{o}</MenuItem>
           ))}
         </TextField>
 

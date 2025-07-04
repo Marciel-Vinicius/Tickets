@@ -1,23 +1,10 @@
 // frontend/src/App.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  CssBaseline,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Box,
-  Divider,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Drawer,
-  Container,
-  TextField,
-  Button,
-  Grid
+  CssBaseline, AppBar, Toolbar, Typography, IconButton,
+  Box, Divider, List, ListItem, ListItemButton,
+  ListItemIcon, ListItemText, Drawer, Container,
+  TextField, Button, Grid
 } from '@mui/material';
 import { styled, ThemeProvider } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -29,7 +16,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
 import { lightTheme, darkTheme } from './theme';
-import API_URL from './config';
+import apiFetch from './api';
 
 import Login from './components/Login';
 import Register from './components/Register';
@@ -40,7 +27,6 @@ import CategoryManagement from './components/CategoryManagement';
 import ReportDashboard from './components/ReportDashboard';
 
 const drawerWidth = 240;
-
 const StyledPaper = styled('div')(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
@@ -49,21 +35,17 @@ const StyledPaper = styled('div')(({ theme }) => ({
 }));
 
 function parseJwt(token) {
-  if (!token) return null;
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const json = atob(base64);
-    return JSON.parse(decodeURIComponent(json.split('').map(c =>
-      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join('')));
+    return JSON.parse(json);
   } catch {
     return null;
   }
 }
 
 export default function App() {
-  // Theme
+  // theme
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -72,7 +54,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Auth
+  // auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -80,37 +62,24 @@ export default function App() {
   const [view, setView] = useState('login');
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Atendimentos state
+  // atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
 
-  // Helper to read the freshest token
-  const getAuthToken = () =>
-    localStorage.getItem('token') || sessionStorage.getItem('token');
-
-  // Fetch atendimentos, wrapped to preserve identity
+  // fetch atendimentos
   const fetchAtendimentos = useCallback(() => {
-    const auth = getAuthToken();
-    if (!auth) return;
-    fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + auth }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          // token inválido: limpa e volta ao login
-          handleLogout();
-          return Promise.reject();
-        }
-        return res.ok ? res.json() : Promise.reject();
-      })
-      .then(data => setAtendimentos(data))
-      .catch(() => { });
-  }, []);
+    if (!token) return;
+    apiFetch('/atendimentos')
+      .then(setAtendimentos)
+      .catch(() => {/* already handles 401 */ });
+  }, [token]);
 
+  // on login/logout
   useEffect(() => {
     if (token) {
-      setUser(parseJwt(token));
+      const u = parseJwt(token);
+      setUser(u);
       setView('atendimentos');
       fetchAtendimentos();
     } else {
@@ -119,18 +88,16 @@ export default function App() {
     }
   }, [token, fetchAtendimentos]);
 
-  const handleLogin = (newToken, remember) => {
+  const handleLogin = (t, remember) => {
     if (remember) {
-      localStorage.setItem('token', newToken);
+      localStorage.setItem('token', t);
       sessionStorage.removeItem('token');
     } else {
-      sessionStorage.setItem('token', newToken);
+      sessionStorage.setItem('token', t);
       localStorage.removeItem('token');
     }
-    setToken(newToken);
-    // fetchAtendimentos will be triggered by useEffect
+    setToken(t);
   };
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
@@ -140,35 +107,14 @@ export default function App() {
 
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
-    const auth = getAuthToken();
-    fetch(`${API_URL}/api/atendimentos/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + auth }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          handleLogout();
-          return Promise.reject();
-        }
-        return res.ok ? null : Promise.reject();
-      })
+    apiFetch(`/atendimentos/${id}`, { method: 'DELETE' })
       .then(fetchAtendimentos)
       .catch(() => { });
   };
 
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
-    const auth = getAuthToken();
-    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
-      headers: { Authorization: 'Bearer ' + auth }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          handleLogout();
-          return Promise.reject();
-        }
-        return res.ok ? res.blob() : Promise.reject();
-      })
+    apiFetch(`/atendimentos/report?date=${reportDate}`)
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -180,7 +126,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Lateral menu: “Usuários” só para DEV
+  // menu items: Usuários só p/ DEV
   const menuItems = [
     { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
     { key: 'categories', icon: <CategoryIcon />, label: 'Categorias' },
@@ -193,14 +139,14 @@ export default function App() {
       <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
       <Divider />
       <List>
-        {menuItems.map(item => (
-          <ListItem key={item.key} disablePadding>
+        {menuItems.map(i => (
+          <ListItem key={i.key} disablePadding>
             <ListItemButton
-              selected={view === item.key}
-              onClick={() => { setView(item.key); setMobileOpen(false); }}
+              selected={view === i.key}
+              onClick={() => { setView(i.key); setMobileOpen(false); }}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
+              <ListItemIcon>{i.icon}</ListItemIcon>
+              <ListItemText primary={i.label} />
             </ListItemButton>
           </ListItem>
         ))}
@@ -221,7 +167,7 @@ export default function App() {
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
         <AppBar position="fixed" sx={{
-          zIndex: theme => theme.zIndex.drawer + 1,
+          zIndex: t => t.zIndex.drawer + 1,
           ml: { md: `${drawerWidth}px` }
         }}>
           <Toolbar>
@@ -231,9 +177,7 @@ export default function App() {
                 edge="start"
                 onClick={() => setMobileOpen(o => !o)}
                 sx={{ mr: 2, display: { md: 'none' } }}
-              >
-                <MenuIcon />
-              </IconButton>
+              ><MenuIcon /></IconButton>
             )}
             <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
               Sistema de Atendimentos
@@ -273,7 +217,7 @@ export default function App() {
                   <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
-                        token={getAuthToken()}
+                        token={token}
                         atendente={user.username}
                         editingAtendimento={editingAtendimento}
                         onAdd={fetchAtendimentos}
@@ -307,7 +251,7 @@ export default function App() {
                         </Box>
                       </Box>
                       <AtendimentoList
-                        token={getAuthToken()}
+                        token={token}
                         onEdit={row => setEditingAtendimento(row)}
                         onDelete={handleDelete}
                       />
@@ -315,9 +259,9 @@ export default function App() {
                   </Grid>
                 </Grid>
               )}
-              {view === 'categories' && <StyledPaper><CategoryManagement token={getAuthToken()} /></StyledPaper>}
-              {view === 'users' && <StyledPaper><UserManagement token={getAuthToken()} /></StyledPaper>}
-              {view === 'reports' && <StyledPaper><ReportDashboard token={getAuthToken()} /></StyledPaper>}
+              {view === 'categories' && <StyledPaper><CategoryManagement token={token} /></StyledPaper>}
+              {view === 'users' && <StyledPaper><UserManagement token={token} /></StyledPaper>}
+              {view === 'reports' && <StyledPaper><ReportDashboard token={token} /></StyledPaper>}
             </>
           )}
         </Box>
