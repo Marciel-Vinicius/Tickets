@@ -1,11 +1,11 @@
 // backend/routes/users.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { authorizeOnlyDev } = require('../middleware/auth');
+const { authorizeSector } = require('../middleware/auth');
 const { query } = require('../db');
 
 const router = express.Router();
-router.use(authorizeOnlyDev);
+router.use(authorizeSector('DEV'));
 
 // Listar
 router.get('/', async (req, res) => {
