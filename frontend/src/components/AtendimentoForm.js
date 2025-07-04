@@ -1,4 +1,3 @@
-// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import {
   Paper,
@@ -19,6 +18,37 @@ export default function AtendimentoForm({
   clearEditing
 }) {
   const today = new Date().toISOString().split('T')[0];
+
+  // inicializa opts sempre como arrays vazios
+  const [opts, setOpts] = useState({
+    lojas: [],
+    contatos: [],
+    ocorrencias: []
+  });
+
+  // carrega categorias COM token no header
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_URL}/api/categories`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => {
+        if (r.status === 401) {
+          // token inválido: redireciona para login
+          return window.location.href = '/';
+        }
+        if (!r.ok) return Promise.reject();
+        return r.json();
+      })
+      .then(data => setOpts(data))
+      .catch(err => {
+        console.error('Falha ao carregar categorias', err);
+        // garante que opts fique sempre definido
+        setOpts({ lojas: [], contatos: [], ocorrencias: [] });
+      });
+  }, [token]);
+
+  // o resto do form continua igual, usando opts.lojas, etc...
   const [form, setForm] = useState({
     atendente: userAtendente || '',
     dia: today,
@@ -28,19 +58,7 @@ export default function AtendimentoForm({
     contato: '',
     ocorrencia: ''
   });
-  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carrega categorias
-  useEffect(() => {
-    fetch(`${API_URL}/api/categories`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => r.json())
-      .then(setOpts)
-      .catch(console.error);
-  }, [token]);
-
-  // preenche form ao editar, ou reseta componente
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -88,8 +106,12 @@ export default function AtendimentoForm({
       body: JSON.stringify(payload)
     })
       .then(r => {
-        if (!r.ok) throw new Error();
-        clearEditing();
+        if (r.status === 401) return window.location.href = '/';
+        if (!r.ok) return Promise.reject();
+        return r.json();
+      })
+      .then(() => {
+        clearEditing && clearEditing();
         isEdit ? onUpdate() : onAdd();
         setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
       })
