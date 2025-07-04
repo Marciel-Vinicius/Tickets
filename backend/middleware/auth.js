@@ -12,11 +12,9 @@ function authenticateToken(req, res, next) {
   });
 }
 
-function authorizeSector(sector) {
-  return (req, res, next) => {
-    if (req.user && req.user.sector === sector) return next();
-    return res.sendStatus(403);
-  };
+function authorizeOnlyDev(req, res, next) {
+  if (req.user && req.user.sector === 'DEV') return next();
+  return res.sendStatus(403);
 }
 
-module.exports = { authenticateToken, authorizeSector };
+module.exports = { authenticateToken, authorizeOnlyDev };
