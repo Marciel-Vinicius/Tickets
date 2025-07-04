@@ -1,62 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
     Box, Typography, Grid, Paper, CircularProgress
-} from '@mui/material';
+} from "@mui/material";
 import {
-    BarChart, Bar, XAxis, YAxis, Tooltip,
-    ResponsiveContainer, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Legend
-} from 'recharts';
-import API_URL from '../config';
+    Bar, Line, Pie
+} from "react-chartjs-2";
+import {
+    Chart as ChartJS,
+    BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
+} from "chart.js";
+import API_URL from "../config";
 
-// Paleta de cores para as fatias
+ChartJS.register(
+    BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
+);
+
+// CORES fixas
 const COLORS = [
-    "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b"
+    "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b",
+    "#ff9800", "#43a047", "#ba68c8", "#ff7043", "#00796b"
 ];
 
-// Legenda customizada para PieChart (em linha, fonte pequena)
-function CustomLegend(props) {
-    const { payload } = props;
-    return (
-        <ul style={{
-            listStyle: "none",
-            margin: "8px 0 0 0",
-            padding: 0,
-            fontSize: 12,
-            lineHeight: "16px",
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "center"
-        }}>
-            {payload && payload.map((entry, i) => (
-                <li key={`item-${i}`} style={{ color: entry.color, marginRight: 18, marginBottom: 3 }}>
-                    <span style={{ marginRight: 4, verticalAlign: "middle" }}>■</span>
-                    {entry.value.length > 13 ? entry.value.slice(0, 11) + "..." : entry.value}
-                </li>
-            ))}
-        </ul>
-    );
-}
-
-// Card de gráfico
 function CardChart({ title, children, empty }) {
     return (
         <Paper elevation={3} sx={{
-            minHeight: 380, // altura maior para gráficos
+            minHeight: 370,
             minWidth: 260,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "flex-start",
             p: 2
         }}>
             <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>{title}</Typography>
             <Box sx={{
                 flex: 1,
-                width: '100%',
+                width: "100%",
                 height: 300,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
             }}>
                 {empty ? (
                     <Typography variant="body2" color="text.secondary">Sem dados</Typography>
@@ -65,10 +48,6 @@ function CardChart({ title, children, empty }) {
         </Paper>
     );
 }
-
-// Label da fatia da pizza (só o percentual, fonte pequena)
-const renderPieLabel = ({ percent }) =>
-    percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""; // só mostra se for maior que 6%
 
 export default function ReportDashboard({ token }) {
     const [summary, setSummary] = useState({});
@@ -112,26 +91,82 @@ export default function ReportDashboard({ token }) {
     }, [token]);
 
     if (loading) return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
             <CircularProgress />
         </Box>
     );
 
+    // Preparação dos datasets para Chart.js
+    const barUser = {
+        labels: byUser.map(i => i.atendente),
+        datasets: [{
+            label: "Atendimentos",
+            data: byUser.map(i => i.count),
+            backgroundColor: COLORS
+        }]
+    };
+    const barSector = {
+        labels: bySector.map(i => i.setor),
+        datasets: [{
+            label: "Atendimentos",
+            data: bySector.map(i => i.count),
+            backgroundColor: COLORS
+        }]
+    };
+    const lineDay = {
+        labels: byDay.map(i => i.dia),
+        datasets: [{
+            label: "Atendimentos",
+            data: byDay.map(i => i.count),
+            fill: false,
+            borderColor: "#1976d2",
+            tension: 0.3,
+            pointBackgroundColor: "#1976d2"
+        }]
+    };
+    const lineMonth = {
+        labels: byMonth.map(i => i.mes),
+        datasets: [{
+            label: "Atendimentos",
+            data: byMonth.map(i => i.count),
+            fill: false,
+            borderColor: "#fbc02d",
+            tension: 0.3,
+            pointBackgroundColor: "#fbc02d"
+        }]
+    };
+    const pieStore = {
+        labels: byStore.map(i => i.loja.length > 15 ? i.loja.slice(0, 14) + "..." : i.loja),
+        datasets: [{
+            data: byStore.map(i => i.count),
+            backgroundColor: COLORS,
+            borderWidth: 1
+        }]
+    };
+    const pieOccurrence = {
+        labels: byOccurrence.map(i => i.ocorrencia.length > 15 ? i.ocorrencia.slice(0, 14) + "..." : i.ocorrencia),
+        datasets: [{
+            data: byOccurrence.map(i => i.count),
+            backgroundColor: COLORS,
+            borderWidth: 1
+        }]
+    };
+
     return (
         <Box sx={{
-            width: '100vw',
-            minHeight: '100vh',
+            width: "100vw",
+            minHeight: "100vh",
             p: 0,
             m: 0,
-            overflowX: 'hidden',
-            background: '#fff'
+            overflowX: "hidden",
+            background: "#fff"
         }}>
             <Typography variant="h5" gutterBottom sx={{ ml: 4, mt: 2 }}>Painel de Relatórios</Typography>
             {/* Cards de resumo */}
             <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
-                {[{ title: 'Tempo Médio', value: summary?.averageTime || '-' },
-                { title: 'Total Atend.', value: summary?.total || 0 },
-                { title: 'Top Atendente', value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : '-' }
+                {[{ title: "Tempo Médio", value: summary?.averageTime || "-" },
+                { title: "Total Atend.", value: summary?.total || 0 },
+                { title: "Top Atendente", value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : "-" }
                 ].map((c, i) => (
                     <Grid key={i} item xs={12} sm={6} md={4} lg={2.4}>
                         <Paper elevation={3} sx={{ p: 2, mb: 1 }}>
@@ -147,44 +182,33 @@ export default function ReportDashboard({ token }) {
                 <Grid item xs={12} md={4} lg={4} xl={4}>
                     <CardChart title="Atendimentos por Usuário" empty={!byUser?.length}>
                         {byUser?.length > 0 &&
-                            <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={byUser}>
-                                    <XAxis dataKey="atendente" fontSize={12} />
-                                    <YAxis fontSize={12} />
-                                    <Tooltip />
-                                    <Bar dataKey="count" fill="#1976d2" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <Bar data={barUser} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
                         }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4} lg={4} xl={4}>
                     <CardChart title="Atendimentos por Dia" empty={!byDay?.length}>
                         {byDay?.length > 0 &&
-                            <ResponsiveContainer width="100%" height={250}>
-                                <LineChart data={byDay}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="dia" fontSize={12} />
-                                    <YAxis fontSize={12} />
-                                    <Tooltip />
-                                    <Line type="monotone" dataKey="count" stroke="#d32f2f" />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            <Line data={lineDay} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
                         }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4} lg={4} xl={4}>
                     <CardChart title="Evolução Mensal (Últimos 6 Meses)" empty={!byMonth?.length}>
                         {byMonth?.length > 0 &&
-                            <ResponsiveContainer width="100%" height={250}>
-                                <LineChart data={byMonth}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="mes" fontSize={12} />
-                                    <YAxis fontSize={12} />
-                                    <Tooltip />
-                                    <Line type="monotone" dataKey="count" stroke="#fbc02d" />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            <Line data={lineMonth} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
                         }
                     </CardChart>
                 </Grid>
@@ -195,64 +219,43 @@ export default function ReportDashboard({ token }) {
                 <Grid item xs={12} md={4} lg={4} xl={4}>
                     <CardChart title="Top Lojas" empty={!byStore?.length}>
                         {byStore?.length > 0 &&
-                            <ResponsiveContainer width="100%" height={250}>
-                                <PieChart>
-                                    <Pie
-                                        data={byStore}
-                                        dataKey="count"
-                                        nameKey="loja"
-                                        cx="50%"
-                                        cy="50%"
-                                        outerRadius={85}
-                                        label={renderPieLabel}
-                                        labelLine={false}
-                                        fontSize={12}
-                                    >
-                                        {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={36} iconSize={12} content={<CustomLegend />} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <Pie data={pieStore} options={{
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: "bottom",
+                                        labels: { font: { size: 12 } }
+                                    }
+                                }
+                            }} height={250} />
                         }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4} lg={4} xl={4}>
                     <CardChart title="Top Ocorrências" empty={!byOccurrence?.length}>
                         {byOccurrence?.length > 0 &&
-                            <ResponsiveContainer width="100%" height={250}>
-                                <PieChart>
-                                    <Pie
-                                        data={byOccurrence}
-                                        dataKey="count"
-                                        nameKey="ocorrencia"
-                                        cx="50%"
-                                        cy="50%"
-                                        outerRadius={85}
-                                        label={renderPieLabel}
-                                        labelLine={false}
-                                        fontSize={12}
-                                    >
-                                        {byOccurrence.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={36} iconSize={12} content={<CustomLegend />} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <Pie data={pieOccurrence} options={{
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: "bottom",
+                                        labels: { font: { size: 12 } }
+                                    }
+                                }
+                            }} height={250} />
                         }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4} lg={4} xl={4}>
                     <CardChart title="Atendimentos por Setor" empty={!bySector?.length}>
                         {bySector?.length > 0 &&
-                            <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={bySector}>
-                                    <XAxis dataKey="setor" fontSize={12} />
-                                    <YAxis fontSize={12} />
-                                    <Tooltip />
-                                    <Bar dataKey="count" fill="#388e3c" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <Bar data={barSector} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
                         }
                     </CardChart>
                 </Grid>
