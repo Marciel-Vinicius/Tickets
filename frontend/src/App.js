@@ -142,9 +142,10 @@ export default function App() {
     }).then(() => fetchAtendimentos());
   };
 
+  // === CORRIGIDO AQUI! ===
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
-    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
+    fetch(`${API_URL}/api/atendimentos/report/${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
       .then(res => (res.ok ? res.blob() : Promise.reject()))
@@ -356,4 +357,4 @@ export default function App() {
     </ThemeProvider>
   );
 }
-// Cria
+
