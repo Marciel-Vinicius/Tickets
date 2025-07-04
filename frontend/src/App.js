@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline,
@@ -68,7 +67,7 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Theme
+  // Theme toggle
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -77,7 +76,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Auth
+  // Auth state
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -87,7 +86,8 @@ export default function App() {
 
   useEffect(() => {
     if (token) {
-      setUser(parseJwt(token));
+      const u = parseJwt(token);
+      setUser(u);
       setView('atendimentos');
     } else {
       setUser(null);
@@ -95,15 +95,15 @@ export default function App() {
     }
   }, [token]);
 
-  const handleLogin = (t, remember) => {
+  const handleLogin = (newToken, remember) => {
     if (remember) {
-      localStorage.setItem('token', t);
+      localStorage.setItem('token', newToken);
       sessionStorage.removeItem('token');
     } else {
-      sessionStorage.setItem('token', t);
+      sessionStorage.setItem('token', newToken);
       localStorage.removeItem('token');
     }
-    setToken(t);
+    setToken(newToken);
   };
 
   const handleLogout = () => {
@@ -113,8 +113,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos
-  const [atendimentos, setAtendimentos] = useState([]);
+  // Atendimentos state
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
 
@@ -123,23 +122,17 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(res => (res.ok ? res.json() : Promise.reject()))
-      .then(data => setAtendimentos(data))
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(/* set state in child components */)
       .catch(() => alert('Falha ao carregar atendimentos.'));
   };
-
-  useEffect(() => {
-    if (token) {
-      fetchAtendimentos();
-    }
-  }, [token]);
 
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
     fetch(`${API_URL}/api/atendimentos/${id}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + token }
-    }).then(() => fetchAtendimentos());
+    }).then(fetchAtendimentos);
   };
 
   const generateReport = () => {
@@ -147,7 +140,7 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(res => (res.ok ? res.blob() : Promise.reject()))
+      .then(r => (r.ok ? r.blob() : Promise.reject()))
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -159,29 +152,20 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
+  // Build menu items, including “Usuários” only for DEV
+  const menuItems = [
+    { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
+    { key: 'categories', icon: <CategoryIcon />, label: 'Categorias' },
+    user?.sector === 'DEV' && { key: 'users', icon: <PeopleIcon />, label: 'Usuários' },
+    { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
+  ].filter(Boolean);
+
   const drawer = (
     <>
-      <Toolbar>
-        <Typography variant="h6">Menu</Typography>
-      </Toolbar>
+      <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
       <Divider />
       <List>
-        {[
-          { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
-          {
-            key: 'categories',
-            icon: <CategoryIcon />,
-            label: 'Categorias',
-            auth: ['DEV', 'SAF'].includes(user?.sector)
-          },
-          {
-            key: 'users',
-            icon: <PeopleIcon />,
-            label: 'Usuários',
-            auth: user?.sector === 'DEV'
-          },
-          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
-        ].map(item => (
+        {menuItems.map(item => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton
               selected={view === item.key}
@@ -189,7 +173,6 @@ export default function App() {
                 setView(item.key);
                 setMobileOpen(false);
               }}
-              disabled={item.auth === false}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
@@ -212,13 +195,10 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <AppBar
-          position="fixed"
-          sx={{
-            zIndex: theme => theme.zIndex.drawer + 1,
-            ml: { md: `${drawerWidth}px` }
-          }}
-        >
+        <AppBar position="fixed" sx={{
+          zIndex: theme => theme.zIndex.drawer + 1,
+          ml: { md: `${drawerWidth}px` }
+        }}>
           <Toolbar>
             {user && (
               <IconButton
@@ -238,52 +218,32 @@ export default function App() {
             </IconButton>
           </Toolbar>
         </AppBar>
-
         {user && (
-          <Drawer
-            variant="permanent"
-            open
-            sx={{
-              width: drawerWidth,
-              flexShrink: 0,
-              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
-            }}
-          >
+          <Drawer variant="permanent" open sx={{
+            width: drawerWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+          }}>
             {drawer}
           </Drawer>
         )}
-
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            p: 3,
-            mt: 8,
-            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
-          }}
-        >
+        <Box component="main" sx={{
+          flexGrow: 1, p: 3, mt: 8,
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
+        }}>
           {!user ? (
-            <Container
-              maxWidth="xs"
-              sx={{
-                mt: 8,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2
-              }}
-            >
-              {view === 'login' ? (
-                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-              ) : (
-                <Register showLogin={() => setView('login')} />
-              )}
+            <Container maxWidth="xs" sx={{
+              mt: 8, display: 'flex',
+              flexDirection: 'column', alignItems: 'center', gap: 2
+            }}>
+              {view === 'login'
+                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+                : <Register showLogin={() => setView('login')} />}
             </Container>
           ) : (
             <>
               {view === 'atendimentos' && (
                 <Grid container spacing={4}>
-                  {/* Formulário */}
                   <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
@@ -299,17 +259,14 @@ export default function App() {
                       />
                     </StyledPaper>
                   </Grid>
-                  {/* Lista */}
                   <Grid item xs={12}>
                     <StyledPaper>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          mb: 2
-                        }}
-                      >
+                      <Box sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        mb: 2
+                      }}>
                         <Typography variant="h6">Atendimentos</Typography>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField
@@ -334,21 +291,9 @@ export default function App() {
                   </Grid>
                 </Grid>
               )}
-              {view === 'categories' && (
-                <StyledPaper>
-                  <CategoryManagement token={token} />
-                </StyledPaper>
-              )}
-              {view === 'users' && (
-                <StyledPaper>
-                  <UserManagement token={token} />
-                </StyledPaper>
-              )}
-              {view === 'reports' && (
-                <StyledPaper>
-                  <ReportDashboard token={token} />
-                </StyledPaper>
-              )}
+              {view === 'categories' && <StyledPaper><CategoryManagement token={token} /></StyledPaper>}
+              {view === 'users' && <StyledPaper><UserManagement token={token} /></StyledPaper>}
+              {view === 'reports' && <StyledPaper><ReportDashboard token={token} /></StyledPaper>}
             </>
           )}
         </Box>

@@ -1,21 +1,29 @@
+// backend/middleware/auth.js
 const jwt = require('jsonwebtoken');
-const SECRET = 'MY_SECRET';
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.sendStatus(401);
-  jwt.verify(token, SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
+  if (!authHeader) return res.status(401).json({ message: 'Unauthorized' });
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(401).json({ message: 'Unauthorized' });
+    req.user = user; // user.sector está disponível
     next();
   });
 }
 
-function authorizeSector(sector) {
+/**
+ * Permite apenas setores especificados.
+ * @param {string[]} allowedSectors
+ */
+function authorizeSector(allowedSectors) {
   return (req, res, next) => {
-    if (req.user && req.user.sector === sector) return next();
-    return res.sendStatus(403);
+    if (!req.user || !allowedSectors.includes(req.user.sector)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    next();
   };
 }
 
