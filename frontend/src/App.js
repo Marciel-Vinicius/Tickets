@@ -53,17 +53,16 @@ function parseJwt(token) {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64);
-    return JSON.parse(decodeURIComponent(json.split('').map(c =>
+    return JSON.parse(atob(base64).split('').map(c =>
       '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join('')));
+    ).join(''));
   } catch {
     return null;
   }
 }
 
 export default function App() {
-  // Theme toggle
+  // Theme
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -79,6 +78,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('login');
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Helper to always get latest token
+  const getAuthToken = () =>
+    localStorage.getItem('token') || sessionStorage.getItem('token');
 
   useEffect(() => {
     if (token) {
@@ -99,7 +102,10 @@ export default function App() {
       localStorage.removeItem('token');
     }
     setToken(t);
+    // fetch atendimentos immediately after login
+    fetchAtendimentos();
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
@@ -107,37 +113,42 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos state
+  // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
 
   const fetchAtendimentos = () => {
-    if (!token) return;
+    const auth = getAuthToken();
+    if (!auth) return;
     fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + token }
+      headers: { Authorization: 'Bearer ' + auth }
     })
       .then(res => {
         if (res.status === 401) {
-          // token expirado ou inválido
           handleLogout();
           return Promise.reject();
         }
         return res.ok ? res.json() : Promise.reject();
       })
       .then(data => setAtendimentos(data))
-      .catch(() => alert('Falha ao carregar atendimentos.'));
+      .catch(() => {
+        /* already handled 401 */
+      });
   };
 
   useEffect(() => {
-    if (token) fetchAtendimentos();
+    if (token) {
+      fetchAtendimentos();
+    }
   }, [token]);
 
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
+    const auth = getAuthToken();
     fetch(`${API_URL}/api/atendimentos/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + token }
+      headers: { Authorization: 'Bearer ' + auth }
     })
       .then(res => {
         if (res.status === 401) {
@@ -152,8 +163,9 @@ export default function App() {
 
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
+    const auth = getAuthToken();
     fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
-      headers: { Authorization: 'Bearer ' + token }
+      headers: { Authorization: 'Bearer ' + auth }
     })
       .then(res => {
         if (res.status === 401) {
@@ -173,7 +185,7 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // Build lateral menu; include "Usuários" only for DEV
+  // Lateral menu: “Usuários” só para DEV
   const menuItems = [
     { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
     { key: 'categories', icon: <CategoryIcon />, label: 'Categorias' },
@@ -213,16 +225,16 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <AppBar
-          position="fixed"
-          sx={{ zIndex: theme => theme.zIndex.drawer + 1, ml: { md: `${drawerWidth}px` } }}
-        >
+        <AppBar position="fixed" sx={{
+          zIndex: theme => theme.zIndex.drawer + 1,
+          ml: { md: `${drawerWidth}px` }
+        }}>
           <Toolbar>
             {user && (
               <IconButton
                 color="inherit"
                 edge="start"
-                onClick={() => setMobileOpen(open => !open)}
+                onClick={() => setMobileOpen(o => !o)}
                 sx={{ mr: 2, display: { md: 'none' } }}
               >
                 <MenuIcon />
@@ -242,8 +254,7 @@ export default function App() {
             variant="permanent"
             open
             sx={{
-              width: drawerWidth,
-              flexShrink: 0,
+              width: drawerWidth, flexShrink: 0,
               '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
             }}
           >
@@ -251,20 +262,18 @@ export default function App() {
           </Drawer>
         )}
 
-        <Box
-          component="main"
-          sx={{ flexGrow: 1, p: 3, mt: 8, width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` } }}
-        >
+        <Box component="main" sx={{
+          flexGrow: 1, p: 3, mt: 8,
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
+        }}>
           {!user ? (
-            <Container
-              maxWidth="xs"
-              sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
-            >
-              {view === 'login' ? (
-                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-              ) : (
-                <Register showLogin={() => setView('login')} />
-              )}
+            <Container maxWidth="xs" sx={{
+              mt: 8, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 2
+            }}>
+              {view === 'login'
+                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+                : <Register showLogin={() => setView('login')} />}
             </Container>
           ) : (
             <>
@@ -273,7 +282,7 @@ export default function App() {
                   <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
-                        token={token}
+                        token={getAuthToken()}
                         atendente={user.username}
                         editingAtendimento={editingAtendimento}
                         onAdd={fetchAtendimentos}
@@ -287,7 +296,10 @@ export default function App() {
                   </Grid>
                   <Grid item xs={12}>
                     <StyledPaper>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Box sx={{
+                        display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'center', mb: 2
+                      }}>
                         <Typography variant="h6">Atendimentos</Typography>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField
@@ -304,7 +316,7 @@ export default function App() {
                         </Box>
                       </Box>
                       <AtendimentoList
-                        token={token}
+                        token={getAuthToken()}
                         onEdit={row => setEditingAtendimento(row)}
                         onDelete={handleDelete}
                       />
@@ -314,17 +326,17 @@ export default function App() {
               )}
               {view === 'categories' && (
                 <StyledPaper>
-                  <CategoryManagement token={token} />
+                  <CategoryManagement token={getAuthToken()} />
                 </StyledPaper>
               )}
               {view === 'users' && (
                 <StyledPaper>
-                  <UserManagement token={token} />
+                  <UserManagement token={getAuthToken()} />
                 </StyledPaper>
               )}
               {view === 'reports' && (
                 <StyledPaper>
-                  <ReportDashboard token={token} />
+                  <ReportDashboard token={getAuthToken()} />
                 </StyledPaper>
               )}
             </>
