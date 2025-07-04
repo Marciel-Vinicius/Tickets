@@ -12,7 +12,6 @@ const COLORS = [
     "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b"
 ];
 
-// Legenda customizada para PieChart
 function CustomLegend(props) {
     const { payload } = props;
     return (
@@ -40,19 +39,22 @@ function CustomLegend(props) {
     );
 }
 
-function CardChart({ title, children }) {
+function CardChart({ title, children, empty }) {
     return (
         <Paper elevation={3} sx={{
             minHeight: 330, minWidth: 240, display: 'flex',
             flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
         }}>
             <Typography variant="subtitle1" sx={{ mb: 1 }}>{title}</Typography>
-            <Box sx={{ flex: 1, width: '100%', height: '85%' }}>{children}</Box>
+            <Box sx={{ flex: 1, width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {empty ? (
+                    <Typography variant="body2" color="text.secondary">Sem dados</Typography>
+                ) : children}
+            </Box>
         </Paper>
     );
 }
 
-// Label customizada para pizza: só mostra percentual
 const renderPieLabel = ({ percent }) =>
     `${(percent * 100).toFixed(0)}%`;
 
@@ -105,9 +107,9 @@ export default function ReportDashboard({ token }) {
 
     return (
         <Box sx={{
-            width: '100vw', // ocupa toda a largura
+            width: '100vw',
             minHeight: '100vh',
-            ml: { xs: -3, md: -6, lg: -9 }, // compensar padding do MUI container
+            ml: { xs: -3, md: -6, lg: -9 },
             pr: { xs: 0, md: 0 }
         }}>
             <Typography variant="h5" gutterBottom sx={{ ml: 4, mt: 2 }}>Painel de Relatórios</Typography>
@@ -129,41 +131,47 @@ export default function ReportDashboard({ token }) {
             {/* Linha 1 de gráficos */}
             <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
                 <Grid item xs={12} md={4}>
-                    <CardChart title="Atendimentos por Usuário">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <BarChart data={byUser}>
-                                <XAxis dataKey="atendente" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="count" fill="#1976d2" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <CardChart title="Atendimentos por Usuário" empty={!byUser?.length}>
+                        {byUser?.length > 0 &&
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={byUser}>
+                                    <XAxis dataKey="atendente" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="count" fill="#1976d2" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                    <CardChart title="Atendimentos por Dia">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <LineChart data={byDay}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="dia" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="count" stroke="#d32f2f" />
-                            </LineChart>
-                        </ResponsiveContainer>
+                    <CardChart title="Atendimentos por Dia" empty={!byDay?.length}>
+                        {byDay?.length > 0 &&
+                            <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={byDay}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="dia" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Line type="monotone" dataKey="count" stroke="#d32f2f" />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                    <CardChart title="Evolução Mensal (Últimos 6 Meses)">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <LineChart data={byMonth}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="mes" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="count" stroke="#fbc02d" />
-                            </LineChart>
-                        </ResponsiveContainer>
+                    <CardChart title="Evolução Mensal (Últimos 6 Meses)" empty={!byMonth?.length}>
+                        {byMonth?.length > 0 &&
+                            <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={byMonth}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="mes" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Line type="monotone" dataKey="count" stroke="#fbc02d" />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        }
                     </CardChart>
                 </Grid>
             </Grid>
@@ -171,57 +179,63 @@ export default function ReportDashboard({ token }) {
             {/* Linha 2 de gráficos */}
             <Grid container spacing={2} sx={{ pl: 3, pr: 3, pb: 2 }}>
                 <Grid item xs={12} md={4}>
-                    <CardChart title="Top Lojas">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <PieChart>
-                                <Pie
-                                    data={byStore}
-                                    dataKey="count"
-                                    nameKey="loja"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={65}
-                                    label={renderPieLabel}
-                                >
-                                    {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                </Pie>
-                                <Tooltip />
-                                <Legend content={<CustomLegend />} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <CardChart title="Top Lojas" empty={!byStore?.length}>
+                        {byStore?.length > 0 &&
+                            <ResponsiveContainer width="100%" height={220}>
+                                <PieChart>
+                                    <Pie
+                                        data={byStore}
+                                        dataKey="count"
+                                        nameKey="loja"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={65}
+                                        label={renderPieLabel}
+                                    >
+                                        {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend content={<CustomLegend />} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                    <CardChart title="Top Ocorrências">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <PieChart>
-                                <Pie
-                                    data={byOccurrence}
-                                    dataKey="count"
-                                    nameKey="ocorrencia"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={65}
-                                    label={renderPieLabel}
-                                >
-                                    {byOccurrence.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                </Pie>
-                                <Tooltip />
-                                <Legend content={<CustomLegend />} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <CardChart title="Top Ocorrências" empty={!byOccurrence?.length}>
+                        {byOccurrence?.length > 0 &&
+                            <ResponsiveContainer width="100%" height={220}>
+                                <PieChart>
+                                    <Pie
+                                        data={byOccurrence}
+                                        dataKey="count"
+                                        nameKey="ocorrencia"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={65}
+                                        label={renderPieLabel}
+                                    >
+                                        {byOccurrence.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend content={<CustomLegend />} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        }
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                    <CardChart title="Atendimentos por Setor">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <BarChart data={bySector}>
-                                <XAxis dataKey="setor" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="count" fill="#388e3c" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <CardChart title="Atendimentos por Setor" empty={!bySector?.length}>
+                        {bySector?.length > 0 &&
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={bySector}>
+                                    <XAxis dataKey="setor" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="count" fill="#388e3c" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        }
                     </CardChart>
                 </Grid>
             </Grid>
