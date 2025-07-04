@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Box, Typography, Grid, Card, CardContent, CircularProgress, Paper
+    Box, Typography, Grid, Paper, CircularProgress
 } from '@mui/material';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -8,13 +8,18 @@ import {
 } from 'recharts';
 import API_URL from '../config';
 
-const COLORS = ['#1976d2', '#d32f2f', '#388e3c', '#fbc02d', '#7b1fa2'];
+const COLORS = [
+    "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b"
+];
 
 function CardChart({ title, children }) {
     return (
-        <Paper elevation={3} sx={{ height: 350, p: 2, mb: 2 }}>
+        <Paper elevation={3} sx={{
+            height: 340, minWidth: 260, display: 'flex',
+            flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
+        }}>
             <Typography variant="subtitle1" gutterBottom>{title}</Typography>
-            <Box sx={{ height: '90%' }}>{children}</Box>
+            <Box sx={{ flex: 1, width: '100%', height: '80%' }}>{children}</Box>
         </Paper>
     );
 }
@@ -66,28 +71,30 @@ export default function ReportDashboard({ token }) {
         </Box>
     );
 
-    // Função para deixar legendas menores no gráfico de pizza
+    // Limita tamanho das legendas
     const formatPieLabel = (value) =>
-        value.length > 18 ? value.slice(0, 15) + '...' : value;
+        value.length > 13 ? value.slice(0, 10) + '...' : value;
 
     return (
         <Box>
             <Typography variant="h5" gutterBottom>Painel de Relatórios</Typography>
-            <Grid container spacing={2}>
-                {/* Resumo geral */}
+            {/* Cards de resumo */}
+            <Grid container spacing={2} mb={1}>
                 {[{ title: 'Tempo Médio', value: summary?.averageTime || '-' },
                 { title: 'Total Atend.', value: summary?.total || 0 },
                 { title: 'Top Atendente', value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : '-' }
                 ].map((c, i) => (
-                    <Grid key={i} item xs={12} md={4}>
-                        <Paper elevation={3} sx={{ p: 2, mb: 2 }}>
+                    <Grid key={i} item xs={12} sm={6} md={4} lg={2.4}>
+                        <Paper elevation={3} sx={{ p: 2, mb: 1 }}>
                             <Typography variant="subtitle1">{c.title}</Typography>
                             <Typography variant="h4">{c.value}</Typography>
                         </Paper>
                     </Grid>
                 ))}
+            </Grid>
 
-                {/* Primeira linha de gráficos */}
+            {/* Linha 1 de gráficos */}
+            <Grid container spacing={2} mb={1}>
                 <Grid item xs={12} md={4}>
                     <CardChart title="Atendimentos por Usuário">
                         <ResponsiveContainer width="100%" height="90%">
@@ -114,6 +121,23 @@ export default function ReportDashboard({ token }) {
                     </CardChart>
                 </Grid>
                 <Grid item xs={12} md={4}>
+                    <CardChart title="Evolução Mensal (Últimos 6 Meses)">
+                        <ResponsiveContainer width="100%" height="90%">
+                            <LineChart data={byMonth}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="mes" />
+                                <YAxis />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="count" stroke="#fbc02d" />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </CardChart>
+                </Grid>
+            </Grid>
+
+            {/* Linha 2 de gráficos */}
+            <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
                     <CardChart title="Top Lojas">
                         <ResponsiveContainer width="100%" height="90%">
                             <PieChart>
@@ -129,13 +153,11 @@ export default function ReportDashboard({ token }) {
                                     {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip />
-                                <Legend verticalAlign="bottom" height={36} />
+                                <Legend layout="vertical" align="right" verticalAlign="middle" />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardChart>
                 </Grid>
-
-                {/* Segunda linha de gráficos */}
                 <Grid item xs={12} md={4}>
                     <CardChart title="Top Ocorrências">
                         <ResponsiveContainer width="100%" height="90%">
@@ -152,7 +174,7 @@ export default function ReportDashboard({ token }) {
                                     {byOccurrence.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip />
-                                <Legend verticalAlign="bottom" height={36} />
+                                <Legend layout="vertical" align="right" verticalAlign="middle" />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardChart>
@@ -166,19 +188,6 @@ export default function ReportDashboard({ token }) {
                                 <Tooltip />
                                 <Bar dataKey="count" fill="#388e3c" />
                             </BarChart>
-                        </ResponsiveContainer>
-                    </CardChart>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <CardChart title="Evolução Mensal (Últimos 6 Meses)">
-                        <ResponsiveContainer width="100%" height="90%">
-                            <LineChart data={byMonth}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="mes" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="count" stroke="#fbc02d" />
-                            </LineChart>
                         </ResponsiveContainer>
                     </CardChart>
                 </Grid>
