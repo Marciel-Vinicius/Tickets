@@ -1,5 +1,5 @@
 // frontend/src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CssBaseline,
   AppBar,
@@ -53,9 +53,10 @@ function parseJwt(token) {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64).split('').map(c =>
+    const json = atob(base64);
+    return JSON.parse(decodeURIComponent(json.split('').map(c =>
       '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join(''));
+    ).join('')));
   } catch {
     return null;
   }
@@ -79,31 +80,55 @@ export default function App() {
   const [view, setView] = useState('login');
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Helper to always get latest token
+  // Atendimentos state
+  const [atendimentos, setAtendimentos] = useState([]);
+  const [reportDate, setReportDate] = useState('');
+  const [editingAtendimento, setEditingAtendimento] = useState(null);
+
+  // Helper to read the freshest token
   const getAuthToken = () =>
     localStorage.getItem('token') || sessionStorage.getItem('token');
+
+  // Fetch atendimentos, wrapped to preserve identity
+  const fetchAtendimentos = useCallback(() => {
+    const auth = getAuthToken();
+    if (!auth) return;
+    fetch(`${API_URL}/api/atendimentos`, {
+      headers: { Authorization: 'Bearer ' + auth }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          // token inválido: limpa e volta ao login
+          handleLogout();
+          return Promise.reject();
+        }
+        return res.ok ? res.json() : Promise.reject();
+      })
+      .then(data => setAtendimentos(data))
+      .catch(() => { });
+  }, []);
 
   useEffect(() => {
     if (token) {
       setUser(parseJwt(token));
       setView('atendimentos');
+      fetchAtendimentos();
     } else {
       setUser(null);
       setView('login');
     }
-  }, [token]);
+  }, [token, fetchAtendimentos]);
 
-  const handleLogin = (t, remember) => {
+  const handleLogin = (newToken, remember) => {
     if (remember) {
-      localStorage.setItem('token', t);
+      localStorage.setItem('token', newToken);
       sessionStorage.removeItem('token');
     } else {
-      sessionStorage.setItem('token', t);
+      sessionStorage.setItem('token', newToken);
       localStorage.removeItem('token');
     }
-    setToken(t);
-    // fetch atendimentos immediately after login
-    fetchAtendimentos();
+    setToken(newToken);
+    // fetchAtendimentos will be triggered by useEffect
   };
 
   const handleLogout = () => {
@@ -112,36 +137,6 @@ export default function App() {
     setToken(null);
     setMobileOpen(false);
   };
-
-  // Atendimentos
-  const [atendimentos, setAtendimentos] = useState([]);
-  const [reportDate, setReportDate] = useState('');
-  const [editingAtendimento, setEditingAtendimento] = useState(null);
-
-  const fetchAtendimentos = () => {
-    const auth = getAuthToken();
-    if (!auth) return;
-    fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + auth }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          handleLogout();
-          return Promise.reject();
-        }
-        return res.ok ? res.json() : Promise.reject();
-      })
-      .then(data => setAtendimentos(data))
-      .catch(() => {
-        /* already handled 401 */
-      });
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchAtendimentos();
-    }
-  }, [token]);
 
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
@@ -250,14 +245,10 @@ export default function App() {
         </AppBar>
 
         {user && (
-          <Drawer
-            variant="permanent"
-            open
-            sx={{
-              width: drawerWidth, flexShrink: 0,
-              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
-            }}
-          >
+          <Drawer variant="permanent" open sx={{
+            width: drawerWidth, flexShrink: 0,
+            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+          }}>
             {drawer}
           </Drawer>
         )}
@@ -268,8 +259,8 @@ export default function App() {
         }}>
           {!user ? (
             <Container maxWidth="xs" sx={{
-              mt: 8, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 2
+              mt: 8, display: 'flex',
+              flexDirection: 'column', alignItems: 'center', gap: 2
             }}>
               {view === 'login'
                 ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
@@ -324,21 +315,9 @@ export default function App() {
                   </Grid>
                 </Grid>
               )}
-              {view === 'categories' && (
-                <StyledPaper>
-                  <CategoryManagement token={getAuthToken()} />
-                </StyledPaper>
-              )}
-              {view === 'users' && (
-                <StyledPaper>
-                  <UserManagement token={getAuthToken()} />
-                </StyledPaper>
-              )}
-              {view === 'reports' && (
-                <StyledPaper>
-                  <ReportDashboard token={getAuthToken()} />
-                </StyledPaper>
-              )}
+              {view === 'categories' && <StyledPaper><CategoryManagement token={getAuthToken()} /></StyledPaper>}
+              {view === 'users' && <StyledPaper><UserManagement token={getAuthToken()} /></StyledPaper>}
+              {view === 'reports' && <StyledPaper><ReportDashboard token={getAuthToken()} /></StyledPaper>}
             </>
           )}
         </Box>
