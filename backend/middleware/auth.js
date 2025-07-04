@@ -20,3 +20,4 @@ function authorizeSector(sector) {
 }
 
 module.exports = { authenticateToken, authorizeSector };
+// Cria
