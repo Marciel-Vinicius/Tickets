@@ -20,16 +20,19 @@ function CustomLegend(props) {
             listStyle: "none",
             margin: 0,
             padding: 0,
-            fontSize: 12,
-            lineHeight: "16px",
-            maxHeight: 90,
-            overflowY: "auto"
+            fontSize: 11,
+            lineHeight: "14px",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            alignItems: "center",
+            maxWidth: "220px"
         }}>
             {payload && payload.map((entry, i) => (
-                <li key={`item-${i}`} style={{ color: entry.color, marginBottom: 2 }}>
-                    <span style={{ marginRight: 6, verticalAlign: "middle" }}>■</span>
-                    {entry.value.length > 18
-                        ? entry.value.slice(0, 16) + "..."
+                <li key={`item-${i}`} style={{ color: entry.color, marginRight: 14, marginBottom: 2 }}>
+                    <span style={{ marginRight: 4, verticalAlign: "middle" }}>■</span>
+                    {entry.value.length > 16
+                        ? entry.value.slice(0, 13) + "..."
                         : entry.value}
                 </li>
             ))}
@@ -40,14 +43,18 @@ function CustomLegend(props) {
 function CardChart({ title, children }) {
     return (
         <Paper elevation={3} sx={{
-            height: 340, minWidth: 260, display: 'flex',
+            minHeight: 330, minWidth: 240, display: 'flex',
             flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
         }}>
-            <Typography variant="subtitle1" gutterBottom>{title}</Typography>
-            <Box sx={{ flex: 1, width: '100%', height: '80%' }}>{children}</Box>
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>{title}</Typography>
+            <Box sx={{ flex: 1, width: '100%', height: '85%' }}>{children}</Box>
         </Paper>
     );
 }
+
+// Label customizada para pizza: só mostra percentual
+const renderPieLabel = ({ percent }) =>
+    `${(percent * 100).toFixed(0)}%`;
 
 export default function ReportDashboard({ token }) {
     const [summary, setSummary] = useState({});
@@ -96,15 +103,16 @@ export default function ReportDashboard({ token }) {
         </Box>
     );
 
-    // Limita tamanho das legendas de fatias
-    const formatPieLabel = (value) =>
-        value.length > 13 ? value.slice(0, 10) + '...' : value;
-
     return (
-        <Box>
-            <Typography variant="h5" gutterBottom>Painel de Relatórios</Typography>
+        <Box sx={{
+            width: '100vw', // ocupa toda a largura
+            minHeight: '100vh',
+            ml: { xs: -3, md: -6, lg: -9 }, // compensar padding do MUI container
+            pr: { xs: 0, md: 0 }
+        }}>
+            <Typography variant="h5" gutterBottom sx={{ ml: 4, mt: 2 }}>Painel de Relatórios</Typography>
             {/* Cards de resumo */}
-            <Grid container spacing={2} mb={1}>
+            <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
                 {[{ title: 'Tempo Médio', value: summary?.averageTime || '-' },
                 { title: 'Total Atend.', value: summary?.total || 0 },
                 { title: 'Top Atendente', value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : '-' }
@@ -119,7 +127,7 @@ export default function ReportDashboard({ token }) {
             </Grid>
 
             {/* Linha 1 de gráficos */}
-            <Grid container spacing={2} mb={1}>
+            <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
                 <Grid item xs={12} md={4}>
                     <CardChart title="Atendimentos por Usuário">
                         <ResponsiveContainer width="100%" height="90%">
@@ -161,7 +169,7 @@ export default function ReportDashboard({ token }) {
             </Grid>
 
             {/* Linha 2 de gráficos */}
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ pl: 3, pr: 3, pb: 2 }}>
                 <Grid item xs={12} md={4}>
                     <CardChart title="Top Lojas">
                         <ResponsiveContainer width="100%" height="90%">
@@ -173,7 +181,7 @@ export default function ReportDashboard({ token }) {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={65}
-                                    label={({ loja }) => formatPieLabel(loja)}
+                                    label={renderPieLabel}
                                 >
                                     {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
@@ -194,7 +202,7 @@ export default function ReportDashboard({ token }) {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={65}
-                                    label={({ ocorrencia }) => formatPieLabel(ocorrencia)}
+                                    label={renderPieLabel}
                                 >
                                     {byOccurrence.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
