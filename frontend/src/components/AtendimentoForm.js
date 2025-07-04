@@ -1,22 +1,26 @@
+// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import {
-  Paper, Box, TextField, MenuItem,
-  Button, Typography
+  Paper,
+  Box,
+  TextField,
+  MenuItem,
+  Button,
+  Typography
 } from '@mui/material';
-import apiFetch from '../api';
+import API_URL from '../config';
 
 export default function AtendimentoForm({
   token,
-  atendente: userAtt,
+  atendente: userAtendente,
   editingAtendimento,
   onAdd,
   onUpdate,
   clearEditing
 }) {
   const today = new Date().toISOString().split('T')[0];
-  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
   const [form, setForm] = useState({
-    atendente: userAtt || '',
+    atendente: userAtendente || '',
     dia: today,
     horaInicio: '',
     horaFim: '',
@@ -24,16 +28,19 @@ export default function AtendimentoForm({
     contato: '',
     ocorrencia: ''
   });
+  const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // load categories once
+  // carrega categorias
   useEffect(() => {
-    if (!token) return;
-    apiFetch('/categories')
+    fetch(`${API_URL}/api/categories`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(r => r.json())
       .then(setOpts)
       .catch(console.error);
   }, [token]);
 
-  // when editing
+  // preenche form ao editar, ou reseta componente
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -66,23 +73,31 @@ export default function AtendimentoForm({
       contato: form.contato,
       ocorrencia: form.ocorrencia
     };
-    const isEdit = !!editingAtendimento;
+    const isEdit = Boolean(editingAtendimento);
     const url = isEdit
-      ? `/atendimentos/${editingAtendimento.id}`
-      : '/atendimentos';
+      ? `${API_URL}/api/atendimentos/${editingAtendimento.id}`
+      : `${API_URL}/api/atendimentos`;
     const method = isEdit ? 'PUT' : 'POST';
 
-    apiFetch(url, { method, body: payload })
-      .then(() => {
-        clearEditing?.();
+    fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(r => {
+        if (!r.ok) throw new Error();
+        clearEditing();
         isEdit ? onUpdate() : onAdd();
         setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
       })
-      .catch(err => alert(err.message));
+      .catch(() => alert('Erro ao salvar atendimento.'));
   };
 
   return (
-    <Paper elevation={3}>
+    <Paper elevation={3} sx={{ width: '100%' }}>
       <Box
         component="form"
         onSubmit={handleSubmit}
@@ -90,8 +105,8 @@ export default function AtendimentoForm({
           p: 3,
           display: 'flex',
           flexWrap: 'wrap',
-          gap: 2,
-          alignItems: 'center'
+          alignItems: 'center',
+          gap: 2
         }}
       >
         <Box sx={{ width: '100%' }}>
@@ -145,8 +160,10 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.lojas.map(l => (
-            <MenuItem key={l} value={l}>{l}</MenuItem>
+          {opts.lojas.map(loja => (
+            <MenuItem key={loja} value={loja}>
+              {loja}
+            </MenuItem>
           ))}
         </TextField>
         <TextField
@@ -158,7 +175,9 @@ export default function AtendimentoForm({
           sx={{ flex: '1 1 150px' }}
         >
           {opts.contatos.map(c => (
-            <MenuItem key={c} value={c}>{c}</MenuItem>
+            <MenuItem key={c} value={c}>
+              {c}
+            </MenuItem>
           ))}
         </TextField>
         <TextField
@@ -170,7 +189,9 @@ export default function AtendimentoForm({
           sx={{ flex: '1 1 150px' }}
         >
           {opts.ocorrencias.map(o => (
-            <MenuItem key={o} value={o}>{o}</MenuItem>
+            <MenuItem key={o} value={o}>
+              {o}
+            </MenuItem>
           ))}
         </TextField>
 

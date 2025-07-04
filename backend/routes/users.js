@@ -1,74 +1,34 @@
 // backend/routes/users.js
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const { authorizeSector } = require('../middleware/auth');
 const { query } = require('../db');
-const { authenticateToken, authorizeSector } = require('../middleware/auth');
 
 const router = express.Router();
+router.use(authorizeSector('DEV'));
 
-// Autentica e só permite setor DEV
-router.use(authenticateToken);
-router.use(authorizeSector(['DEV']));
-
+// Listar
 router.get('/', async (req, res) => {
-    try {
-        const { rows } = await query(
-            `SELECT id, username, sector FROM users ORDER BY username`,
-            []
-        );
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erro ao listar usuários.' });
-    }
+    const { rows } = await query('SELECT username, sector FROM users', []);
+    res.json(rows);
 });
 
-router.post('/', async (req, res) => {
-    try {
-        const { username, password, sector } = req.body;
-        const result = await query(
-            `INSERT INTO users (username, password, sector)
-       VALUES ($1, crypt($2, gen_salt('bf')), $3)
-       RETURNING id, username, sector`,
-            [username, password, sector]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erro ao criar usuário.' });
-    }
-});
+// Atualizar setor e/ou senha
+router.put('/:username', async (req, res) => {
+    const { username } = req.params;
+    const { sector, password } = req.body;
 
-router.put('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { username, password, sector } = req.body;
-        const result = await query(
-            `UPDATE users
-       SET username=$1,
-           password = CASE WHEN $2 <> '' THEN crypt($2, gen_salt('bf')) ELSE password END,
-           sector=$3
-       WHERE id = $4
-       RETURNING id, username, sector`,
-            [username, password, sector, id]
-        );
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Usuário não encontrado.' });
-        }
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erro ao atualizar usuário.' });
+    if (sector) {
+        await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
     }
-});
+    if (password) {
+        const hash = bcrypt.hashSync(password, 8);
+        await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
+    }
 
-router.delete('/:id', async (req, res) => {
-    try {
-        await query(`DELETE FROM users WHERE id = $1`, [req.params.id]);
-        res.sendStatus(204);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erro ao excluir usuário.' });
-    }
+    const { rows } = await query('SELECT username, sector FROM users WHERE username=$1', [username]);
+    if (rows.length === 0) return res.sendStatus(404);
+    res.json(rows[0]);
 });
 
 module.exports = router;

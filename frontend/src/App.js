@@ -1,10 +1,23 @@
 // frontend/src/App.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  CssBaseline, AppBar, Toolbar, Typography, IconButton,
-  Box, Divider, List, ListItem, ListItemButton,
-  ListItemIcon, ListItemText, Drawer, Container,
-  TextField, Button, Grid
+  CssBaseline,
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Box,
+  Divider,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Drawer,
+  Container,
+  TextField,
+  Button,
+  Grid
 } from '@mui/material';
 import { styled, ThemeProvider } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -16,7 +29,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
 import { lightTheme, darkTheme } from './theme';
-import apiFetch from './api';
+import API_URL from './config';
 
 import Login from './components/Login';
 import Register from './components/Register';
@@ -27,6 +40,7 @@ import CategoryManagement from './components/CategoryManagement';
 import ReportDashboard from './components/ReportDashboard';
 
 const drawerWidth = 240;
+
 const StyledPaper = styled('div')(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
@@ -35,17 +49,26 @@ const StyledPaper = styled('div')(({ theme }) => ({
 }));
 
 function parseJwt(token) {
+  if (!token) return null;
   try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const json = atob(base64);
-    return JSON.parse(json);
+    return JSON.parse(
+      decodeURIComponent(
+        json
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+    );
   } catch {
     return null;
   }
 }
 
 export default function App() {
-  // theme
+  // Theme
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -54,7 +77,7 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // auth
+  // Auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -62,31 +85,15 @@ export default function App() {
   const [view, setView] = useState('login');
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // atendimentos
-  const [atendimentos, setAtendimentos] = useState([]);
-  const [reportDate, setReportDate] = useState('');
-  const [editingAtendimento, setEditingAtendimento] = useState(null);
-
-  // fetch atendimentos
-  const fetchAtendimentos = useCallback(() => {
-    if (!token) return;
-    apiFetch('/atendimentos')
-      .then(setAtendimentos)
-      .catch(() => {/* already handles 401 */ });
-  }, [token]);
-
-  // on login/logout
   useEffect(() => {
     if (token) {
-      const u = parseJwt(token);
-      setUser(u);
+      setUser(parseJwt(token));
       setView('atendimentos');
-      fetchAtendimentos();
     } else {
       setUser(null);
       setView('login');
     }
-  }, [token, fetchAtendimentos]);
+  }, [token]);
 
   const handleLogin = (t, remember) => {
     if (remember) {
@@ -98,6 +105,7 @@ export default function App() {
     }
     setToken(t);
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
@@ -105,16 +113,41 @@ export default function App() {
     setMobileOpen(false);
   };
 
+  // Atendimentos
+  const [atendimentos, setAtendimentos] = useState([]);
+  const [reportDate, setReportDate] = useState('');
+  const [editingAtendimento, setEditingAtendimento] = useState(null);
+
+  const fetchAtendimentos = () => {
+    if (!token) return;
+    fetch(`${API_URL}/api/atendimentos`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(res => (res.ok ? res.json() : Promise.reject()))
+      .then(data => setAtendimentos(data))
+      .catch(() => alert('Falha ao carregar atendimentos.'));
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchAtendimentos();
+    }
+  }, [token]);
+
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
-    apiFetch(`/atendimentos/${id}`, { method: 'DELETE' })
-      .then(fetchAtendimentos)
-      .catch(() => { });
+    fetch(`${API_URL}/api/atendimentos/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token }
+    }).then(() => fetchAtendimentos());
   };
 
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
-    apiFetch(`/atendimentos/report?date=${reportDate}`)
+    fetch(`${API_URL}/api/atendimentos/report?date=${reportDate}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(res => (res.ok ? res.blob() : Promise.reject()))
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -126,27 +159,40 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // menu items: Usuários só p/ DEV
-  const menuItems = [
-    { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
-    { key: 'categories', icon: <CategoryIcon />, label: 'Categorias' },
-    user?.sector === 'DEV' && { key: 'users', icon: <PeopleIcon />, label: 'Usuários' },
-    { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
-  ].filter(Boolean);
-
   const drawer = (
     <>
-      <Toolbar><Typography variant="h6">Menu</Typography></Toolbar>
+      <Toolbar>
+        <Typography variant="h6">Menu</Typography>
+      </Toolbar>
       <Divider />
       <List>
-        {menuItems.map(i => (
-          <ListItem key={i.key} disablePadding>
+        {[
+          { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
+          {
+            key: 'categories',
+            icon: <CategoryIcon />,
+            label: 'Categorias',
+            auth: ['DEV', 'SAF'].includes(user?.sector)
+          },
+          {
+            key: 'users',
+            icon: <PeopleIcon />,
+            label: 'Usuários',
+            auth: user?.sector === 'DEV'
+          },
+          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
+        ].map(item => (
+          <ListItem key={item.key} disablePadding>
             <ListItemButton
-              selected={view === i.key}
-              onClick={() => { setView(i.key); setMobileOpen(false); }}
+              selected={view === item.key}
+              onClick={() => {
+                setView(item.key);
+                setMobileOpen(false);
+              }}
+              disabled={item.auth === false}
             >
-              <ListItemIcon>{i.icon}</ListItemIcon>
-              <ListItemText primary={i.label} />
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
             </ListItemButton>
           </ListItem>
         ))}
@@ -166,10 +212,13 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <AppBar position="fixed" sx={{
-          zIndex: t => t.zIndex.drawer + 1,
-          ml: { md: `${drawerWidth}px` }
-        }}>
+        <AppBar
+          position="fixed"
+          sx={{
+            zIndex: theme => theme.zIndex.drawer + 1,
+            ml: { md: `${drawerWidth}px` }
+          }}
+        >
           <Toolbar>
             {user && (
               <IconButton
@@ -177,7 +226,9 @@ export default function App() {
                 edge="start"
                 onClick={() => setMobileOpen(o => !o)}
                 sx={{ mr: 2, display: { md: 'none' } }}
-              ><MenuIcon /></IconButton>
+              >
+                <MenuIcon />
+              </IconButton>
             )}
             <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
               Sistema de Atendimentos
@@ -189,31 +240,50 @@ export default function App() {
         </AppBar>
 
         {user && (
-          <Drawer variant="permanent" open sx={{
-            width: drawerWidth, flexShrink: 0,
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
-          }}>
+          <Drawer
+            variant="permanent"
+            open
+            sx={{
+              width: drawerWidth,
+              flexShrink: 0,
+              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+            }}
+          >
             {drawer}
           </Drawer>
         )}
 
-        <Box component="main" sx={{
-          flexGrow: 1, p: 3, mt: 8,
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
-        }}>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            mt: 8,
+            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` }
+          }}
+        >
           {!user ? (
-            <Container maxWidth="xs" sx={{
-              mt: 8, display: 'flex',
-              flexDirection: 'column', alignItems: 'center', gap: 2
-            }}>
-              {view === 'login'
-                ? <Login onLogin={handleLogin} showRegister={() => setView('register')} />
-                : <Register showLogin={() => setView('login')} />}
+            <Container
+              maxWidth="xs"
+              sx={{
+                mt: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
+              {view === 'login' ? (
+                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+              ) : (
+                <Register showLogin={() => setView('login')} />
+              )}
             </Container>
           ) : (
             <>
               {view === 'atendimentos' && (
                 <Grid container spacing={4}>
+                  {/* Formulário */}
                   <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
@@ -229,12 +299,17 @@ export default function App() {
                       />
                     </StyledPaper>
                   </Grid>
+                  {/* Lista */}
                   <Grid item xs={12}>
                     <StyledPaper>
-                      <Box sx={{
-                        display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'center', mb: 2
-                      }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: 2
+                        }}
+                      >
                         <Typography variant="h6">Atendimentos</Typography>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField
@@ -259,9 +334,21 @@ export default function App() {
                   </Grid>
                 </Grid>
               )}
-              {view === 'categories' && <StyledPaper><CategoryManagement token={token} /></StyledPaper>}
-              {view === 'users' && <StyledPaper><UserManagement token={token} /></StyledPaper>}
-              {view === 'reports' && <StyledPaper><ReportDashboard token={token} /></StyledPaper>}
+              {view === 'categories' && (
+                <StyledPaper>
+                  <CategoryManagement token={token} />
+                </StyledPaper>
+              )}
+              {view === 'users' && (
+                <StyledPaper>
+                  <UserManagement token={token} />
+                </StyledPaper>
+              )}
+              {view === 'reports' && (
+                <StyledPaper>
+                  <ReportDashboard token={token} />
+                </StyledPaper>
+              )}
             </>
           )}
         </Box>
