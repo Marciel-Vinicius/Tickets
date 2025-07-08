@@ -1,29 +1,33 @@
+// backend/index.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
+
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/users');
+const atendRouter = require('./routes/atendimentos');
+const categoryRouter = require('./routes/categories');
+const reportsRouter = require('./routes/reports');
+
+const { authenticateToken } = require('./middleware/auth');
+
 const app = express();
-const port = process.env.PORT || 10000;
 
-const atendimentosRouter = require('./routes/atendimentos');
-const usersRouter = require('./routes/users');
-const categoriesRouter = require('./routes/categories');
-const authRouter = require('./routes/auth'); // ADICIONE ESTA LINHA
+app.use(cors());
+app.use(bodyParser.json());
 
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-app.use(express.json());
+// Públicos
+app.use('/api/auth', authRouter);
 
-app.use('/api/atendimentos', atendimentosRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/categories', categoriesRouter);
-app.use('/api/auth', authRouter); // ADICIONE ESTA LINHA
+// Protegidos
+app.use('/api/users', authenticateToken, userRouter);
+app.use('/api/categories', authenticateToken, categoryRouter);
+app.use('/api/atendimentos', authenticateToken, atendRouter);
+app.use('/api/reports', authenticateToken, reportsRouter);
 
-app.get('/', (req, res) => {
-    res.send('Backend funcionando!');
-});
-
-app.listen(port, () => {
-    console.log(`🚀 Backend rodando na porta ${port}`);
-});
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () =>
+    console.log(`🚀 Backend rodando na porta ${PORT}`)
+);
+// Cria

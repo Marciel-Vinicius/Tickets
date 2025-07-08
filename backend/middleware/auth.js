@@ -1,30 +1,31 @@
-// backend/routes/auth.js
-const express = require('express');
 const jwt = require('jsonwebtoken');
-const { query } = require('../db');
-const router = express.Router();
+const SECRET = process.env.JWT_SECRET || 'MY_SECRET';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secreto-superseguro'; // Troque em produção!
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+  jwt.verify(token, SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+}
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+// Agora aceita múltiplos setores e dá master ao DEV
+function authorizeSector(...sectors) {
+  return (req, res, next) => {
+    if (!req.user) return res.sendStatus(403);
+    // Master DEV
+    if (req.user.sector === 'DEV') {
+      return next();
+    }
+    // Só continua se estiver na lista de setores permitidos
+    if (sectors.includes(req.user.sector)) {
+      return next();
+    }
+    return res.sendStatus(403);
+  };
+}
 
-  // Ajuste o nome do campo se necessário!
-  const { rows } = await query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
-  const user = rows[0];
-  if (!user) {
-    return res.status(401).json({ message: 'Usuário ou senha inválidos' });
-  }
-
-  // Retorne apenas campos seguros no token!
-  const token = jwt.sign({
-    id: user.id,
-    username: user.nome,
-    email: user.email,
-    sector: user.sector
-  }, JWT_SECRET, { expiresIn: '8h' });
-
-  res.json({ token });
-});
-
-module.exports = router;
+module.exports = { authenticateToken, authorizeSector };

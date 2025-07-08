@@ -95,14 +95,6 @@ export default function App() {
     }
   }, [token]);
 
-  // --- PROTEÇÃO DA VIEW DE USUÁRIOS ---
-  useEffect(() => {
-    // Se não for DEV e tentar acessar users, volta pra atendimentos
-    if (view === 'users' && user && user.sector !== 'DEV') {
-      setView('atendimentos');
-    }
-  }, [view, user]);
-
   const handleLogin = (t, remember) => {
     if (remember) {
       localStorage.setItem('token', t);
@@ -150,6 +142,7 @@ export default function App() {
     }).then(() => fetchAtendimentos());
   };
 
+  // === CORRIGIDO AQUI! ===
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report/${reportDate}`, {
@@ -167,7 +160,6 @@ export default function App() {
       .catch(() => alert('Erro ao gerar relatório'));
   };
 
-  // ===== MENU LATERAL COM PERMISSÃO =====
   const drawer = (
     <>
       <Toolbar>
@@ -175,70 +167,36 @@ export default function App() {
       </Toolbar>
       <Divider />
       <List>
-        {/* Atendimentos (todos veem) */}
-        <ListItem key="atendimentos" disablePadding>
-          <ListItemButton
-            selected={view === 'atendimentos'}
-            onClick={() => {
-              setView('atendimentos');
-              setMobileOpen(false);
-            }}
-          >
-            <ListItemIcon>
-              <EventIcon />
-            </ListItemIcon>
-            <ListItemText primary="Atendimentos" />
-          </ListItemButton>
-        </ListItem>
-        {/* Categorias (DEV/SAF) */}
-        {(user?.sector === 'DEV' || user?.sector === 'SAF') && (
-          <ListItem key="categories" disablePadding>
+        {[
+          { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
+          {
+            key: 'categories',
+            icon: <CategoryIcon />,
+            label: 'Categorias',
+            auth: ['DEV', 'SAF'].includes(user?.sector)
+          },
+          {
+            key: 'users',
+            icon: <PeopleIcon />,
+            label: 'Usuários',
+            auth: user?.sector === 'DEV'
+          },
+          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
+        ].map(item => (
+          <ListItem key={item.key} disablePadding>
             <ListItemButton
-              selected={view === 'categories'}
+              selected={view === item.key}
               onClick={() => {
-                setView('categories');
+                setView(item.key);
                 setMobileOpen(false);
               }}
+              disabled={item.auth === false}
             >
-              <ListItemIcon>
-                <CategoryIcon />
-              </ListItemIcon>
-              <ListItemText primary="Categorias" />
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
             </ListItemButton>
           </ListItem>
-        )}
-        {/* Usuários (só DEV) */}
-        {user?.sector === 'DEV' && (
-          <ListItem key="users" disablePadding>
-            <ListItemButton
-              selected={view === 'users'}
-              onClick={() => {
-                setView('users');
-                setMobileOpen(false);
-              }}
-            >
-              <ListItemIcon>
-                <PeopleIcon />
-              </ListItemIcon>
-              <ListItemText primary="Usuários" />
-            </ListItemButton>
-          </ListItem>
-        )}
-        {/* Relatórios (todos veem, ou limite para DEV/SAF se quiser) */}
-        <ListItem key="reports" disablePadding>
-          <ListItemButton
-            selected={view === 'reports'}
-            onClick={() => {
-              setView('reports');
-              setMobileOpen(false);
-            }}
-          >
-            <ListItemIcon>
-              <BarChartIcon />
-            </ListItemIcon>
-            <ListItemText primary="Relatórios" />
-          </ListItemButton>
-        </ListItem>
+        ))}
       </List>
       <Divider />
       <List>
@@ -377,12 +335,12 @@ export default function App() {
                   </Grid>
                 </Grid>
               )}
-              {view === 'categories' && (user?.sector === 'DEV' || user?.sector === 'SAF') && (
+              {view === 'categories' && (
                 <StyledPaper>
                   <CategoryManagement token={token} />
                 </StyledPaper>
               )}
-              {view === 'users' && user?.sector === 'DEV' && (
+              {view === 'users' && (
                 <StyledPaper>
                   <UserManagement token={token} />
                 </StyledPaper>
