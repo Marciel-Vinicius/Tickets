@@ -1,9 +1,10 @@
+// backend/routes/users.js
 const express = require('express');
 const { query } = require('../db');
 const authorizeSector = require('../middleware/authorizeSector');
 const router = express.Router();
 
-// Apenas DEV pode acessar qualquer rota de usuário
+// Apenas DEV pode acessar rotas de usuários
 router.use(authorizeSector(['DEV']));
 
 // Listar usuários

@@ -1,3 +1,4 @@
+// backend/middleware/authorizeSector.js
 module.exports = function authorizeSector(allowedSectors) {
     return (req, res, next) => {
         const userSector = req.user.sector;
