@@ -29,21 +29,35 @@ export default function CategoryManagement({ token }) {
     useEffect(fetchData, [tab]);
 
     const handleChangeTab = (_, newVal) => setTab(newVal);
-    const handleAdd = () => { setCurrent({ oldValue: '', value: '' }); setOpen(true); };
-    const handleEdit = v => { setCurrent({ oldValue: v, value: v }); setOpen(true); };
+    const handleAdd = () => {
+        setCurrent({ oldValue: '', value: '' });
+        setOpen(true);
+    };
+    const handleEdit = v => {
+        setCurrent({ oldValue: v, value: v });
+        setOpen(true);
+    };
     const handleDelete = v => {
         if (!window.confirm('Confirma exclusão?')) return;
-        fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`, {
-            method: 'DELETE',
-            headers: { Authorization: 'Bearer ' + token }
-        }).then(fetchData);
+        fetch(
+            `${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`,
+            {
+                method: 'DELETE',
+                headers: { Authorization: 'Bearer ' + token }
+            }
+        ).then(fetchData);
     };
     const handleInactivate = v => {
         if (!window.confirm('Confirma inativar este contato?')) return;
-        fetch(`${API_URL}/api/categories/contatos/${encodeURIComponent(v)}/inativar`, {
-            method: 'PUT',
-            headers: { Authorization: 'Bearer ' + token }
-        }).then(fetchData).catch(console.error);
+        fetch(
+            `${API_URL}/api/categories/contatos/${encodeURIComponent(v)}/inativar`,
+            {
+                method: 'PUT',
+                headers: { Authorization: 'Bearer ' + token }
+            }
+        )
+            .then(fetchData)
+            .catch(console.error);
     };
 
     const handleSave = () => {
@@ -97,7 +111,9 @@ export default function CategoryManagement({ token }) {
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>Gerenciar Categorias</Typography>
+            <Typography variant="h5" gutterBottom>
+                Gerenciar Categorias
+            </Typography>
             <Tabs value={tab} onChange={handleChangeTab}>
                 <Tab label="Lojas" value="lojas" />
                 <Tab label="Contatos" value="contatos" />
@@ -105,12 +121,18 @@ export default function CategoryManagement({ token }) {
             </Tabs>
 
             <Box sx={{ mt: 2, mb: 2 }}>
-                <Button variant="contained" onClick={handleAdd}>Adicionar</Button>
+                <Button variant="contained" onClick={handleAdd}>
+                    Adicionar
+                </Button>
             </Box>
 
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
-                    rows={data.map(v => ({ id: v, value: v }))}
+                    rows={data.map(v => ({
+                        // assume v is { value: string, active?: boolean }
+                        id: v.value,
+                        value: v.value
+                    }))}
                     columns={columns}
                     pageSize={5}
                     rowsPerPageOptions={[5]}
@@ -125,16 +147,19 @@ export default function CategoryManagement({ token }) {
                     <TextField
                         label="Valor"
                         value={current.value}
-                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
+                        onChange={e =>
+                            setCurrent(p => ({ ...p, value: e.target.value }))
+                        }
                         fullWidth
                     />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">Salvar</Button>
+                    <Button onClick={handleSave} variant="contained">
+                        Salvar
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>
     );
 }
-// Cria
