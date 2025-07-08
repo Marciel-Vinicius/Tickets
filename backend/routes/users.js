@@ -1,35 +1,41 @@
-// backend/routes/users.js
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const { authorizeSector } = require('../middleware/auth');
 const { query } = require('../db');
-
+const authorizeSector = require('../middleware/authorizeSector');
 const router = express.Router();
-router.use(authorizeSector('DEV'));
 
-// Listar
+// Apenas DEV pode acessar qualquer rota de usuário
+router.use(authorizeSector(['DEV']));
+
+// Listar usuários
 router.get('/', async (req, res) => {
-    const { rows } = await query('SELECT username, sector FROM users', []);
+    const { rows } = await query('SELECT * FROM users', []);
     res.json(rows);
 });
 
-// Atualizar setor e/ou senha
-router.put('/:username', async (req, res) => {
-    const { username } = req.params;
-    const { sector, password } = req.body;
+// Criar usuário
+router.post('/', async (req, res) => {
+    const { nome, email, password, sector } = req.body;
+    await query(
+        'INSERT INTO users (nome, email, password, sector) VALUES ($1, $2, $3, $4)',
+        [nome, email, password, sector]
+    );
+    res.status(201).json({ message: 'Usuário criado com sucesso' });
+});
 
-    if (sector) {
-        await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
-    }
-    if (password) {
-        const hash = bcrypt.hashSync(password, 8);
-        await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
-    }
+// Editar usuário
+router.put('/:id', async (req, res) => {
+    const { nome, email, sector } = req.body;
+    await query(
+        'UPDATE users SET nome = $1, email = $2, sector = $3 WHERE id = $4',
+        [nome, email, sector, req.params.id]
+    );
+    res.json({ message: 'Usuário atualizado com sucesso' });
+});
 
-    const { rows } = await query('SELECT username, sector FROM users WHERE username=$1', [username]);
-    if (rows.length === 0) return res.sendStatus(404);
-    res.json(rows[0]);
+// Excluir usuário
+router.delete('/:id', async (req, res) => {
+    await query('DELETE FROM users WHERE id = $1', [req.params.id]);
+    res.json({ message: 'Usuário excluído com sucesso' });
 });
 
 module.exports = router;
-// Cria
