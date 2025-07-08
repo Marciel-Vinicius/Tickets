@@ -53,7 +53,15 @@ export default function AtendimentoForm({
         ocorrencia: editingAtendimento.ocorrencia
       });
     } else {
-      setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
+      setForm(f => ({
+        ...f,
+        dia: today,
+        horaInicio: '',
+        horaFim: '',
+        loja: '',
+        contato: '',
+        ocorrencia: ''
+      }));
     }
   }, [editingAtendimento, today]);
 
@@ -91,7 +99,15 @@ export default function AtendimentoForm({
         if (!r.ok) throw new Error();
         clearEditing();
         isEdit ? onUpdate() : onAdd();
-        setForm(f => ({ ...f, dia: today, horaInicio: '', horaFim: '', loja: '', contato: '', ocorrencia: '' }));
+        setForm(f => ({
+          ...f,
+          dia: today,
+          horaInicio: '',
+          horaFim: '',
+          loja: '',
+          contato: '',
+          ocorrencia: ''
+        }));
       })
       .catch(() => alert('Erro ao salvar atendimento.'));
   };
@@ -152,6 +168,7 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 120px' }}
         />
+
         <TextField
           select
           name="loja"
@@ -160,12 +177,13 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.lojas.map(loja => (
-            <MenuItem key={loja} value={loja}>
-              {loja}
+          {opts.lojas.map(({ value }) => (
+            <MenuItem key={value} value={value}>
+              {value}
             </MenuItem>
           ))}
         </TextField>
+
         <TextField
           select
           name="contato"
@@ -174,12 +192,15 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.contatos.map(c => (
-            <MenuItem key={c} value={c}>
-              {c}
-            </MenuItem>
-          ))}
+          {opts.contatos
+            .filter(c => c.active)
+            .map(({ value }) => (
+              <MenuItem key={value} value={value}>
+                {value}
+              </MenuItem>
+            ))}
         </TextField>
+
         <TextField
           select
           name="ocorrencia"
@@ -188,9 +209,9 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.ocorrencias.map(o => (
-            <MenuItem key={o} value={o}>
-              {o}
+          {opts.ocorrencias.map(({ value }) => (
+            <MenuItem key={value} value={value}>
+              {value}
             </MenuItem>
           ))}
         </TextField>
@@ -207,4 +228,3 @@ export default function AtendimentoForm({
     </Paper>
   );
 }
-// Cria
