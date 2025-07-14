@@ -129,40 +129,40 @@ router.get('/report/:date', async (req, res) => {
     // Dados das linhas
 
     const lineYs = [];
+    const colXs = [40, 100, 160, 260, 360, 560];
+    const colWidths = [60, 60, 100, 100, 200];
+
     items.forEach(item => {
       const linhaY = doc.y;
+
+      // Calcular a altura da célula mais alta
+      const heights = [
+        doc.heightOfString(item.loja, { width: colWidths[2] }),
+        doc.heightOfString(item.contato, { width: colWidths[3] }),
+        doc.heightOfString(item.ocorrencia, { width: colWidths[4] })
+      ];
+      const maxHeight = Math.max(...heights, 12);
+
       lineYs.push(linhaY);
 
-      doc.font('Helvetica').fontSize(10)
-        .text(item.hora_inicio, 40, linhaY)
-        .text(item.hora_fim || '-', 100, linhaY)
-        .text(item.loja, 160, linhaY, { width: 90, ellipsis: true })
-        .text(item.contato, 260, linhaY, { width: 90, ellipsis: true })
-        .text(item.ocorrencia, 360, linhaY, { width: 200, ellipsis: true });
+      const offsetY = linhaY + (maxHeight - 10) / 2;
 
-      const nextY = Math.max(
-        doc.y,
-        linhaY +
-        Math.max(
-          doc.heightOfString(item.loja, { width: 90 }),
-          doc.heightOfString(item.contato, { width: 90 }),
-          doc.heightOfString(item.ocorrencia, { width: 200 })
-        )
-      );
-      doc.y = nextY;
-      doc.moveDown(0.5);
+      doc.font('Helvetica').fontSize(10)
+        .text(item.hora_inicio, colXs[0], offsetY, { width: colWidths[0], align: 'center' })
+        .text(item.hora_fim || '-', colXs[1], offsetY, { width: colWidths[1], align: 'center' })
+        .text(item.loja, colXs[2], offsetY, { width: colWidths[2], align: 'center' })
+        .text(item.contato, colXs[3], offsetY, { width: colWidths[3], align: 'center' })
+        .text(item.ocorrencia, colXs[4], offsetY, { width: colWidths[4], align: 'center' });
+
+      doc.y = linhaY + maxHeight + 4;
     });
 
-    // Grade dinâmica baseada nas posições Y reais
-    const colXs = [40, 100, 160, 260, 360, 560];
-
-    // Linhas horizontais
+    // Grade
     lineYs.forEach(y => {
       doc.moveTo(40, y).lineTo(560, y).stroke();
     });
     doc.moveTo(40, doc.y).lineTo(560, doc.y).stroke();
 
-    // Linhas verticais
     colXs.forEach(x => {
       doc.moveTo(x, lineYs[0]).lineTo(x, doc.y).stroke();
     });
