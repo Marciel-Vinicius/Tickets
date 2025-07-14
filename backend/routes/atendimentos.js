@@ -133,24 +133,24 @@ router.get('/report/:date', async (req, res) => {
 
     const rowYs = [];
     let currentY = doc.y;
+    const padding = 6;
 
-    // Renderizar linhas e guardar Y por linha
+    // Calcular posições das linhas com altura ajustada
     items.forEach(item => {
       const heights = [
         doc.heightOfString(item.loja, { width: colWidths[2] }),
         doc.heightOfString(item.contato, { width: colWidths[3] }),
         doc.heightOfString(item.ocorrencia, { width: colWidths[4] })
       ];
-      const maxHeight = Math.max(...heights, 14);
+      const maxHeight = Math.max(...heights, 14) + padding;
       rowYs.push({ y: currentY, h: maxHeight });
-
-      currentY += maxHeight + 6;
+      currentY += maxHeight;
     });
 
-    // Redesenhar os dados com alinhamento vertical centralizado
+    // Renderizar conteúdo centralizado verticalmente
     rowYs.forEach((row, index) => {
       const item = items[index];
-      const offsetY = row.y + row.h / 2 - 5;
+      const offsetY = row.y + row.h / 2 - 6;
 
       doc.font('Helvetica').fontSize(10)
         .text(item.hora_inicio, colXs[0], offsetY, { width: colWidths[0], align: 'center' })
@@ -160,13 +160,13 @@ router.get('/report/:date', async (req, res) => {
         .text(item.ocorrencia, colXs[4], offsetY, { width: colWidths[4], align: 'center' });
     });
 
-    // Linhas horizontais
+    // Desenhar grade horizontal
     rowYs.forEach(row => {
       doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
     });
     doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
 
-    // Linhas verticais
+    // Desenhar grade vertical
     const colEnds = [40, 100, 160, 260, 360, 560];
     colEnds.forEach(x => {
       doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
