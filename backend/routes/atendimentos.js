@@ -133,24 +133,21 @@ router.get('/report/:date', async (req, res) => {
 
     const rowYs = [];
     let currentY = doc.y;
-    const padding = 6;
 
-    // Calcular posições das linhas com altura ajustada
     items.forEach(item => {
-      const heights = [
-        doc.heightOfString(item.loja, { width: colWidths[2] }),
-        doc.heightOfString(item.contato, { width: colWidths[3] }),
-        doc.heightOfString(item.ocorrencia, { width: colWidths[4] })
-      ];
-      const maxHeight = Math.max(...heights, 14) + padding;
-      rowYs.push({ y: currentY, h: maxHeight });
-      currentY += maxHeight;
-    });
+      // Calcular altura de cada célula
+      const cellHeights = {
+        hora_inicio: doc.heightOfString(item.hora_inicio, { width: colWidths[0] }),
+        hora_fim: doc.heightOfString(item.hora_fim || '-', { width: colWidths[1] }),
+        loja: doc.heightOfString(item.loja, { width: colWidths[2] }),
+        contato: doc.heightOfString(item.contato, { width: colWidths[3] }),
+        ocorrencia: doc.heightOfString(item.ocorrencia, { width: colWidths[4] })
+      };
 
-    // Renderizar conteúdo centralizado verticalmente
-    rowYs.forEach((row, index) => {
-      const item = items[index];
-      const offsetY = row.y + row.h / 2 - 6;
+      const maxHeight = Math.max(...Object.values(cellHeights)) + 8;
+      rowYs.push({ y: currentY, h: maxHeight });
+
+      const offsetY = currentY + (maxHeight - 10) / 2;
 
       doc.font('Helvetica').fontSize(10)
         .text(item.hora_inicio, colXs[0], offsetY, { width: colWidths[0], align: 'center' })
@@ -158,15 +155,17 @@ router.get('/report/:date', async (req, res) => {
         .text(item.loja, colXs[2], offsetY, { width: colWidths[2], align: 'center' })
         .text(item.contato, colXs[3], offsetY, { width: colWidths[3], align: 'center' })
         .text(item.ocorrencia, colXs[4], offsetY, { width: colWidths[4], align: 'center' });
+
+      currentY += maxHeight;
     });
 
-    // Desenhar grade horizontal
+    // Linhas horizontais
     rowYs.forEach(row => {
       doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
     });
     doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
 
-    // Desenhar grade vertical
+    // Linhas verticais
     const colEnds = [40, 100, 160, 260, 360, 560];
     colEnds.forEach(x => {
       doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
