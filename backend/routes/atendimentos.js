@@ -127,8 +127,12 @@ router.get('/report/:date', async (req, res) => {
     doc.moveDown(0.5);
 
     // Dados das linhas
+
+    const lineYs = [];
     items.forEach(item => {
       const linhaY = doc.y;
+      lineYs.push(linhaY);
+
       doc.font('Helvetica').fontSize(10)
         .text(item.hora_inicio, 40, linhaY)
         .text(item.hora_fim || '-', 100, linhaY)
@@ -136,7 +140,6 @@ router.get('/report/:date', async (req, res) => {
         .text(item.contato, 260, linhaY, { width: 90, ellipsis: true })
         .text(item.ocorrencia, 360, linhaY, { width: 200, ellipsis: true });
 
-      // Corrige o Y para a próxima linha, considerando altura de texto em cada coluna
       const nextY = Math.max(
         doc.y,
         linhaY +
@@ -150,27 +153,20 @@ router.get('/report/:date', async (req, res) => {
       doc.moveDown(0.5);
     });
 
+    // Grade dinâmica baseada nas posições Y reais
+    const colXs = [40, 100, 160, 260, 360, 560];
 
-    // Desenhar grade ao redor da tabela
-    const columnPositions = [40, 100, 160, 260, 360, 560];
-    const lineHeight = 20;
-    const startTableY = startY + 15;
-    const endTableY = doc.y;
-
-    // Linhas horizontais entre os dados
-    let currentY = startTableY;
-    while (currentY < endTableY) {
-      doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
-      currentY += lineHeight;
-    }
-    doc.moveTo(40, endTableY).lineTo(560, endTableY).stroke(); // última linha
-
-    // Linhas verticais nas colunas
-    columnPositions.forEach(x => {
-      doc.moveTo(x, startTableY).lineTo(x, endTableY).stroke();
+    // Linhas horizontais
+    lineYs.forEach(y => {
+      doc.moveTo(40, y).lineTo(560, y).stroke();
     });
+    doc.moveTo(40, doc.y).lineTo(560, doc.y).stroke();
 
-    // Rodapé com assinatura
+    // Linhas verticais
+    colXs.forEach(x => {
+      doc.moveTo(x, lineYs[0]).lineTo(x, doc.y).stroke();
+    });
+    doc.moveTo(560, lineYs[0]).lineTo(560, doc.y).stroke();
 
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const labelY = footerY - 15;
