@@ -150,14 +150,38 @@ router.get('/report/:date', async (req, res) => {
       doc.moveDown(0.5);
     });
 
+
+    // Linhas de grade
+    const tableTop = startY + 15;
+    const rowHeight = 20;
+    const tableBottom = doc.y;
+
+    // Desenhar linhas horizontais
+    let currentY = tableTop;
+    while (currentY < tableBottom) {
+      doc.moveTo(40, currentY).lineTo(550, currentY).stroke();
+      currentY += rowHeight;
+    }
+
+    // Desenhar linhas verticais
+    doc.moveTo(40, tableTop).lineTo(40, tableBottom).stroke();     // H.Início
+    doc.moveTo(100, tableTop).lineTo(100, tableBottom).stroke();   // H.Fim
+    doc.moveTo(160, tableTop).lineTo(160, tableBottom).stroke();   // Loja
+    doc.moveTo(260, tableTop).lineTo(260, tableBottom).stroke();   // Contato
+    doc.moveTo(360, tableTop).lineTo(360, tableBottom).stroke();   // Ocorrência
+    doc.moveTo(560, tableTop).lineTo(560, tableBottom).stroke();   // Fim tabela
+
     // Rodapé com assinatura
+
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const labelY = footerY - 15;
     const lineW = 210;
     doc.font('Helvetica').fontSize(12)
-      .text('Ass. Plantonista', 50, labelY)
       .moveTo(50, footerY).lineTo(50 + lineW, footerY).stroke()
-      .text('Ass. Supervisor', 350, labelY)
+      .text('Ass. Plantonista', 50, footerY + 5)
+      .moveTo(50, footerY).lineTo(50 + lineW, footerY).stroke()
+      .moveTo(350, footerY).lineTo(350 + lineW, footerY).stroke()
+      .text('Ass. Supervisor', 350, footerY + 5)
       .moveTo(350, footerY).lineTo(350 + lineW, footerY).stroke();
 
     doc.end();
