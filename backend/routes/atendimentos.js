@@ -151,25 +151,24 @@ router.get('/report/:date', async (req, res) => {
     });
 
 
-    // Linhas de grade
-    const tableTop = startY + 15;
-    const rowHeight = 20;
-    const tableBottom = doc.y;
+    // Desenhar grade ao redor da tabela
+    const columnPositions = [40, 100, 160, 260, 360, 560];
+    const lineHeight = 20;
+    const startTableY = startY + 15;
+    const endTableY = doc.y;
 
-    // Desenhar linhas horizontais
-    let currentY = tableTop;
-    while (currentY < tableBottom) {
-      doc.moveTo(40, currentY).lineTo(550, currentY).stroke();
-      currentY += rowHeight;
+    // Linhas horizontais entre os dados
+    let currentY = startTableY;
+    while (currentY < endTableY) {
+      doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
+      currentY += lineHeight;
     }
+    doc.moveTo(40, endTableY).lineTo(560, endTableY).stroke(); // última linha
 
-    // Desenhar linhas verticais
-    doc.moveTo(40, tableTop).lineTo(40, tableBottom).stroke();     // H.Início
-    doc.moveTo(100, tableTop).lineTo(100, tableBottom).stroke();   // H.Fim
-    doc.moveTo(160, tableTop).lineTo(160, tableBottom).stroke();   // Loja
-    doc.moveTo(260, tableTop).lineTo(260, tableBottom).stroke();   // Contato
-    doc.moveTo(360, tableTop).lineTo(360, tableBottom).stroke();   // Ocorrência
-    doc.moveTo(560, tableTop).lineTo(560, tableBottom).stroke();   // Fim tabela
+    // Linhas verticais nas colunas
+    columnPositions.forEach(x => {
+      doc.moveTo(x, startTableY).lineTo(x, endTableY).stroke();
+    });
 
     // Rodapé com assinatura
 
