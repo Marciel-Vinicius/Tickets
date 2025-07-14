@@ -128,24 +128,29 @@ router.get('/report/:date', async (req, res) => {
 
     // Dados das linhas
 
-    const lineYs = [];
-    const colXs = [40, 100, 160, 260, 360, 560];
+    const colXs = [40, 100, 160, 260, 360];
     const colWidths = [60, 60, 100, 100, 200];
 
-    items.forEach(item => {
-      const linhaY = doc.y;
+    const rowYs = [];
+    let currentY = doc.y;
 
-      // Calcular a altura da célula mais alta
+    // Renderizar linhas e guardar Y por linha
+    items.forEach(item => {
       const heights = [
         doc.heightOfString(item.loja, { width: colWidths[2] }),
         doc.heightOfString(item.contato, { width: colWidths[3] }),
         doc.heightOfString(item.ocorrencia, { width: colWidths[4] })
       ];
-      const maxHeight = Math.max(...heights, 12);
+      const maxHeight = Math.max(...heights, 14);
+      rowYs.push({ y: currentY, h: maxHeight });
 
-      lineYs.push(linhaY);
+      currentY += maxHeight + 6;
+    });
 
-      const offsetY = linhaY + (maxHeight - 10) / 2;
+    // Redesenhar os dados com alinhamento vertical centralizado
+    rowYs.forEach((row, index) => {
+      const item = items[index];
+      const offsetY = row.y + row.h / 2 - 5;
 
       doc.font('Helvetica').fontSize(10)
         .text(item.hora_inicio, colXs[0], offsetY, { width: colWidths[0], align: 'center' })
@@ -153,20 +158,21 @@ router.get('/report/:date', async (req, res) => {
         .text(item.loja, colXs[2], offsetY, { width: colWidths[2], align: 'center' })
         .text(item.contato, colXs[3], offsetY, { width: colWidths[3], align: 'center' })
         .text(item.ocorrencia, colXs[4], offsetY, { width: colWidths[4], align: 'center' });
-
-      doc.y = linhaY + maxHeight + 4;
     });
 
-    // Grade
-    lineYs.forEach(y => {
-      doc.moveTo(40, y).lineTo(560, y).stroke();
+    // Linhas horizontais
+    rowYs.forEach(row => {
+      doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
     });
-    doc.moveTo(40, doc.y).lineTo(560, doc.y).stroke();
+    doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
 
-    colXs.forEach(x => {
-      doc.moveTo(x, lineYs[0]).lineTo(x, doc.y).stroke();
+    // Linhas verticais
+    const colEnds = [40, 100, 160, 260, 360, 560];
+    colEnds.forEach(x => {
+      doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
     });
-    doc.moveTo(560, lineYs[0]).lineTo(560, doc.y).stroke();
+
+    doc.y = currentY + 10;
 
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const labelY = footerY - 15;
