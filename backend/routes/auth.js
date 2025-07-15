@@ -34,7 +34,7 @@ router.post('/login', async (req, res) => {
   const token = jwt.sign(
     { username, sector: rows[0].sector },
     SECRET,
-    { expiresIn: '1h' }
+    { expiresIn: '24h' }
   );
   res.json({ token });
 });
