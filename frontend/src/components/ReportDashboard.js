@@ -1,3 +1,4 @@
+// frontend/src/components/ReportDashboard.js
 import React, { useEffect, useState } from "react";
 import {
     Box, Typography, Grid, Paper, CircularProgress
@@ -15,7 +16,6 @@ ChartJS.register(
     BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
 );
 
-// CORES fixas
 const COLORS = [
     "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b",
     "#ff9800", "#43a047", "#ba68c8", "#ff7043", "#00796b"
@@ -59,7 +59,7 @@ export default function ReportDashboard({ token }) {
     const [byMonth, setByMonth] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const fetchAll = () => {
         setLoading(true);
         Promise.all([
             fetch(`${API_URL}/api/reports/summary`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
@@ -88,6 +88,10 @@ export default function ReportDashboard({ token }) {
             console.error(err);
             setLoading(false);
         });
+    };
+
+    useEffect(() => {
+        fetchAll();
     }, [token]);
 
     if (loading) return (
@@ -96,22 +100,13 @@ export default function ReportDashboard({ token }) {
         </Box>
     );
 
-    // Preparação dos datasets para Chart.js
     const barUser = {
         labels: byUser.map(i => i.atendente),
-        datasets: [{
-            label: "Atendimentos",
-            data: byUser.map(i => i.count),
-            backgroundColor: COLORS
-        }]
+        datasets: [{ label: "Atendimentos", data: byUser.map(i => i.count), backgroundColor: COLORS }]
     };
     const barSector = {
         labels: bySector.map(i => i.setor),
-        datasets: [{
-            label: "Atendimentos",
-            data: bySector.map(i => i.count),
-            backgroundColor: COLORS
-        }]
+        datasets: [{ label: "Atendimentos", data: bySector.map(i => i.count), backgroundColor: COLORS }]
     };
     const lineDay = {
         labels: byDay.map(i => i.dia),
@@ -137,32 +132,17 @@ export default function ReportDashboard({ token }) {
     };
     const pieStore = {
         labels: byStore.map(i => i.loja.length > 15 ? i.loja.slice(0, 14) + "..." : i.loja),
-        datasets: [{
-            data: byStore.map(i => i.count),
-            backgroundColor: COLORS,
-            borderWidth: 1
-        }]
+        datasets: [{ data: byStore.map(i => i.count), backgroundColor: COLORS, borderWidth: 1 }]
     };
     const pieOccurrence = {
         labels: byOccurrence.map(i => i.ocorrencia.length > 15 ? i.ocorrencia.slice(0, 14) + "..." : i.ocorrencia),
-        datasets: [{
-            data: byOccurrence.map(i => i.count),
-            backgroundColor: COLORS,
-            borderWidth: 1
-        }]
+        datasets: [{ data: byOccurrence.map(i => i.count), backgroundColor: COLORS, borderWidth: 1 }]
     };
 
     return (
-        <Box sx={{
-            width: "100vw",
-            minHeight: "100vh",
-            p: 0,
-            m: 0,
-            overflowX: "hidden",
-            background: "#fff"
-        }}>
+        <Box sx={{ width: "100vw", minHeight: "100vh", overflowX: "hidden", background: "#fff" }}>
             <Typography variant="h5" gutterBottom sx={{ ml: 4, mt: 2 }}>Painel de Relatórios</Typography>
-            {/* Cards de resumo */}
+
             <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
                 {[{ title: "Tempo Médio", value: summary?.averageTime || "-" },
                 { title: "Total Atend.", value: summary?.total || 0 },
@@ -177,88 +157,16 @@ export default function ReportDashboard({ token }) {
                 ))}
             </Grid>
 
-            {/* Linha 1 de gráficos */}
             <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Atendimentos por Usuário" empty={!byUser?.length}>
-                        {byUser?.length > 0 &&
-                            <Bar data={barUser} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
-                    </CardChart>
-                </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Atendimentos por Dia" empty={!byDay?.length}>
-                        {byDay?.length > 0 &&
-                            <Line data={lineDay} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
-                    </CardChart>
-                </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Evolução Mensal (Últimos 6 Meses)" empty={!byMonth?.length}>
-                        {byMonth?.length > 0 &&
-                            <Line data={lineMonth} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
-                    </CardChart>
-                </Grid>
+                <Grid item xs={12} md={4}><CardChart title="Atendimentos por Usuário" empty={!byUser.length}><Bar data={barUser} options={{ responsive: true, plugins: { legend: { display: false } } }} /></CardChart></Grid>
+                <Grid item xs={12} md={4}><CardChart title="Atendimentos por Dia" empty={!byDay.length}><Line data={lineDay} options={{ responsive: true, plugins: { legend: { display: false } } }} /></CardChart></Grid>
+                <Grid item xs={12} md={4}><CardChart title="Evolução Mensal (Últimos 6 Meses)" empty={!byMonth.length}><Line data={lineMonth} options={{ responsive: true, plugins: { legend: { display: false } } }} /></CardChart></Grid>
             </Grid>
 
-            {/* Linha 2 de gráficos */}
             <Grid container spacing={2} sx={{ pl: 3, pr: 3, pb: 2 }}>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Top Lojas" empty={!byStore?.length}>
-                        {byStore?.length > 0 &&
-                            <Pie data={pieStore} options={{
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        display: true,
-                                        position: "bottom",
-                                        labels: { font: { size: 12 } }
-                                    }
-                                }
-                            }} height={250} />
-                        }
-                    </CardChart>
-                </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Top Ocorrências" empty={!byOccurrence?.length}>
-                        {byOccurrence?.length > 0 &&
-                            <Pie data={pieOccurrence} options={{
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        display: true,
-                                        position: "bottom",
-                                        labels: { font: { size: 12 } }
-                                    }
-                                }
-                            }} height={250} />
-                        }
-                    </CardChart>
-                </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Atendimentos por Setor" empty={!bySector?.length}>
-                        {bySector?.length > 0 &&
-                            <Bar data={barSector} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
-                    </CardChart>
-                </Grid>
+                <Grid item xs={12} md={4}><CardChart title="Top Lojas" empty={!byStore.length}><Pie data={pieStore} options={{ responsive: true, plugins: { legend: { position: "bottom" } } }} /></CardChart></Grid>
+                <Grid item xs={12} md={4}><CardChart title="Top Ocorrências" empty={!byOccurrence.length}><Pie data={pieOccurrence} options={{ responsive: true, plugins: { legend: { position: "bottom" } } }} /></CardChart></Grid>
+                <Grid item xs={12} md={4}><CardChart title="Atendimentos por Setor" empty={!bySector.length}><Bar data={barSector} options={{ responsive: true, plugins: { legend: { display: false } } }} /></CardChart></Grid>
             </Grid>
         </Box>
     );
