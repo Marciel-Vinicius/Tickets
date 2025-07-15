@@ -2,29 +2,36 @@
 const jwt = require('jsonwebtoken');
 const SECRET = process.env.JWT_SECRET || 'MY_SECRET';
 
-// Verifica e decodifica o JWT, colocando o payload em req.user
-function authenticate(req, res, next) {
+/**
+ * Verifica e decodifica o JWT, colocando o payload em req.user
+ */
+function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  if (!authHeader) return res.status(401).json({ message: 'Token não fornecido' });
-  const [, token] = authHeader.split(' ');
-  if (!token) return res.status(401).json({ message: 'Token inválido' });
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, SECRET, (err, payload) => {
-    if (err) return res.status(403).json({ message: 'Token inválido ou expirado' });
-    req.user = payload;
+  jwt.verify(token, SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
     next();
   });
 }
 
-// Agora authorizeSector retorna um middleware válido
-function authorizeSector(...allowedSectors) {
+/**
+ * Factory que retorna um middleware para autorizar setores.
+ * DEV sempre tem acesso ("master").
+ */
+function authorizeSector(...sectors) {
   return (req, res, next) => {
-    const setor = req.user?.sector;
-    if (!setor || !allowedSectors.includes(setor)) {
-      return res.status(403).json({ message: 'Acesso negado: setor não autorizado' });
+    if (!req.user) return res.sendStatus(403);
+    if (req.user.sector === 'DEV') {
+      return next();
     }
-    next();
+    if (sectors.includes(req.user.sector)) {
+      return next();
+    }
+    return res.sendStatus(403);
   };
 }
 
-module.exports = { authenticate, authorizeSector };
+module.exports = { authenticateToken, authorizeSector };
