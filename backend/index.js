@@ -1,33 +1,36 @@
 // backend/index.js
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 
+// rotas
 const authRouter = require('./routes/auth');
-const userRouter = require('./routes/users');
-const atendRouter = require('./routes/atendimentos');
-const categoryRouter = require('./routes/categories');
-const reportsRouter = require('./routes/reports');
+const usersRouter = require('./routes/users');
+const categoriesRouter = require('./routes/categories');
+const atendimentosRouter = require('./routes/atendimentos');
+// se você tiver um arquivo de relatório separado, importe aqui
+// const reportRouter = require('./routes/report');
 
-const { authenticateToken } = require('./middleware/auth');
+const { authenticate } = require('./middleware/auth');
 
 const app = express();
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Públicos
+// → rotas públicas de auth (login/register)
 app.use('/api/auth', authRouter);
 
-// Protegidos
-app.use('/api/users', authenticateToken, userRouter);
-app.use('/api/categories', authenticateToken, categoryRouter);
-app.use('/api/atendimentos', authenticateToken, atendRouter);
-app.use('/api/reports', authenticateToken, reportsRouter);
+// → aplica autenticação em todas as rotas abaixo
+app.use(authenticate);
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () =>
-    console.log(`🚀 Backend rodando na porta ${PORT}`)
-);
-// Cria
+// → rotas protegidas
+app.use('/api/users', usersRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/atendimentos', atendimentosRouter);
+// se tiver reportRouter separado:
+// app.use('/api/atendimentos/report', reportRouter);
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+    console.log(`🚀 Backend rodando na porta ${PORT}`);
+});
