@@ -1,46 +1,30 @@
-// backend/routes/auth.js
-const express = require('express');
+// backend/middleware/auth.js
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { query } = require('../db');
-
-const router = express.Router();
 const SECRET = process.env.JWT_SECRET || 'MY_SECRET';
 
-router.post('/register', async (req, res) => {
-  const { username, password, sector } = req.body;
-  if (!username || !password || !sector)
-    return res.status(400).json({ message: 'Dados incompletos' });
+// Verifica e decodifica o JWT, colocando o payload em req.user
+function authenticate(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ message: 'Token não fornecido' });
+  const [, token] = authHeader.split(' ');
+  if (!token) return res.status(401).json({ message: 'Token inválido' });
 
-  const { rowCount } = await query('SELECT 1 FROM users WHERE username=$1', [username]);
-  if (rowCount > 0)
-    return res.status(409).json({ message: 'Usuário já existe' });
+  jwt.verify(token, SECRET, (err, payload) => {
+    if (err) return res.status(403).json({ message: 'Token inválido ou expirado' });
+    req.user = payload;
+    next();
+  });
+}
 
-  const hash = bcrypt.hashSync(password, 8);
-  await query(
-    'INSERT INTO users(username, password, sector) VALUES($1, $2, $3)',
-    [username, hash, sector]
-  );
-  res.status(201).json({ message: 'Usuário criado com sucesso.' });
-});
+// Agora authorizeSector retorna um middleware válido
+function authorizeSector(...allowedSectors) {
+  return (req, res, next) => {
+    const setor = req.user?.sector;
+    if (!setor || !allowedSectors.includes(setor)) {
+      return res.status(403).json({ message: 'Acesso negado: setor não autorizado' });
+    }
+    next();
+  };
+}
 
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const { rows } = await query(
-    'SELECT password, sector FROM users WHERE username=$1',
-    [username]
-  );
-  if (rows.length === 0 || !bcrypt.compareSync(password, rows[0].password)) {
-    return res.status(401).json({ message: 'Credenciais inválidas' });
-  }
-
-  // Token válido por 24h
-  const token = jwt.sign(
-    { username, sector: rows[0].sector },
-    SECRET,
-    { expiresIn: '24h' }
-  );
-  res.json({ token });
-});
-
-module.exports = router;
+module.exports = { authenticate, authorizeSector };
