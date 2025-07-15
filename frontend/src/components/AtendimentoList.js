@@ -4,42 +4,31 @@ import { Box, useTheme } from '@mui/material';
 import { DataGrid, GridToolbar, GridActionsCellItem } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import API_URL from '../config';
 
-export default function AtendimentoList({ token, onEdit, onDelete }) {
+export default function AtendimentoList({ atendimentos, onEdit, onDelete }) {
   const theme = useTheme();
   const [rows, setRows] = useState([]);
   const [pageSize, setPageSize] = useState(10);
 
-  // carrega todos os atendimentos
   useEffect(() => {
-    fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(data =>
-        setRows(
-          data.map(item => {
-            const [y, m, d] = item.dia.split('-');
-            return {
-              id: item.id,
-              atendente: item.atendente,
-              data: `${d}/${m}/${y}`,
-              horaInicio: item.hora_inicio,
-              horaFim: item.hora_fim,
-              loja: item.loja,
-              contato: item.contato,
-              ocorrencia: item.ocorrencia
-            };
-          })
-        )
-      )
-      .catch(() => alert('Falha ao carregar atendimentos.'));
-  }, [token]);
+    if (Array.isArray(atendimentos)) {
+      const mappedRows = atendimentos.map(item => ({
+        id: item.id,
+        atendente: item.atendente,
+        dia: item.dia,
+        horaInicio: item.hora_inicio,
+        horaFim: item.hora_fim,
+        loja: item.loja,
+        contato: item.contato,
+        ocorrencia: item.ocorrencia
+      }));
+      setRows(mappedRows);
+    }
+  }, [atendimentos]);
 
   const columns = [
     { field: 'atendente', headerName: 'Atendente', flex: 1, minWidth: 150 },
-    { field: 'data', headerName: 'Data', flex: 1, minWidth: 120 },
+    { field: 'dia', headerName: 'Data', flex: 1, minWidth: 120 },
     { field: 'horaInicio', headerName: 'Início', flex: 1, minWidth: 120 },
     { field: 'horaFim', headerName: 'Fim', flex: 1, minWidth: 120 },
     { field: 'loja', headerName: 'Loja', flex: 2, minWidth: 150 },
@@ -52,18 +41,14 @@ export default function AtendimentoList({ token, onEdit, onDelete }) {
       width: 100,
       getActions: params => [
         <GridActionsCellItem
-          key="edit"
           icon={<EditIcon />}
           label="Editar"
-          onClick={() => onEdit(params.row)}
+          onClick={() => onEdit && onEdit(params.row)}
         />,
         <GridActionsCellItem
-          key="delete"
-          icon={<DeleteIcon color="error" />}
+          icon={<DeleteIcon />}
           label="Excluir"
-          onClick={() => {
-            if (window.confirm('Confirma exclusão?')) onDelete(params.row.id);
-          }}
+          onClick={() => onDelete && onDelete(params.id)}
         />
       ]
     }
@@ -74,7 +59,7 @@ export default function AtendimentoList({ token, onEdit, onDelete }) {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 260px)', // ajuste para seu AppBar+form
+        height: 'calc(100vh - 260px)',
         width: '100%'
       }}
     >
@@ -99,4 +84,3 @@ export default function AtendimentoList({ token, onEdit, onDelete }) {
     </Box>
   );
 }
-// Cria

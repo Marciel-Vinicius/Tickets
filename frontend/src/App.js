@@ -111,10 +111,12 @@ export default function App() {
     setMobileOpen(false);
   };
 
+  // Novos estados
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
 
+  // Função para (re)carregar atendimentos
   const fetchAtendimentos = () => {
     if (!token) return;
     fetch(`${API_URL}/api/atendimentos`, {
@@ -131,12 +133,14 @@ export default function App() {
       .catch(() => console.log('Falha ao carregar atendimentos.'));
   };
 
+  // Carrega ao logar
   useEffect(() => {
     if (token) {
       fetchAtendimentos();
     }
   }, [token]);
 
+  // Excluir e recarregar
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
     fetch(`${API_URL}/api/atendimentos/${id}`, {
@@ -152,6 +156,7 @@ export default function App() {
       });
   };
 
+  // Gerar PDF de relatório
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report/${reportDate}`, {
@@ -182,10 +187,21 @@ export default function App() {
       </Toolbar>
       <Divider />
       <List>
-        {[{ key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
-        { key: 'categories', icon: <CategoryIcon />, label: 'Categorias', auth: ['DEV', 'SAF'].includes(user?.sector) },
-        { key: 'users', icon: <PeopleIcon />, label: 'Usuários', auth: user?.sector === 'DEV' },
-        { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
+        {[
+          { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
+          {
+            key: 'categories',
+            icon: <CategoryIcon />,
+            label: 'Categorias',
+            auth: ['DEV', 'SAF'].includes(user?.sector)
+          },
+          {
+            key: 'users',
+            icon: <PeopleIcon />,
+            label: 'Usuários',
+            auth: user?.sector === 'DEV'
+          },
+          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
         ].map(item => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton
@@ -217,10 +233,21 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <AppBar position="fixed" sx={{ zIndex: theme => theme.zIndex.drawer + 1, ml: { md: `${drawerWidth}px` } }}>
+        <AppBar
+          position="fixed"
+          sx={{
+            zIndex: theme => theme.zIndex.drawer + 1,
+            ml: { md: `${drawerWidth}px` }
+          }}
+        >
           <Toolbar>
             {user && (
-              <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(o => !o)} sx={{ mr: 2, display: { md: 'none' } }}>
+              <IconButton
+                color="inherit"
+                edge="start"
+                onClick={() => setMobileOpen(o => !o)}
+                sx={{ mr: 2, display: { md: 'none' } }}
+              >
                 <MenuIcon />
               </IconButton>
             )}
@@ -240,7 +267,10 @@ export default function App() {
             sx={{
               width: drawerWidth,
               flexShrink: 0,
-              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+              '& .MuiDrawer-paper': {
+                width: drawerWidth,
+                boxSizing: 'border-box'
+              }
             }}
           >
             {drawer}
@@ -257,9 +287,21 @@ export default function App() {
           }}
         >
           {!user ? (
-            <Container maxWidth="xs" sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Container
+              maxWidth="xs"
+              sx={{
+                mt: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
               {view === 'login' ? (
-                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
+                <Login
+                  onLogin={handleLogin}
+                  showRegister={() => setView('register')}
+                />
               ) : (
                 <Register showLogin={() => setView('login')} />
               )}
@@ -285,7 +327,14 @@ export default function App() {
                   </Grid>
                   <Grid item xs={12}>
                     <StyledPaper>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: 2
+                        }}
+                      >
                         <Typography variant="h6">Atendimentos</Typography>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField
@@ -296,13 +345,16 @@ export default function App() {
                             onChange={e => setReportDate(e.target.value)}
                             InputLabelProps={{ shrink: true }}
                           />
-                          <Button variant="contained" onClick={generateReport}>
+                          <Button
+                            variant="contained"
+                            onClick={generateReport}
+                          >
                             Gerar Relatório
                           </Button>
                         </Box>
                       </Box>
                       <AtendimentoList
-                        token={token}
+                        atendimentos={atendimentos}
                         onEdit={row => setEditingAtendimento(row)}
                         onDelete={handleDelete}
                       />
