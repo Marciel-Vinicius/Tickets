@@ -1,13 +1,13 @@
 // backend/routes/users.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
-// mantém seu import original, agora incluindo authenticate
+// importa os dois middlewares do auth.js
 const { authenticate, authorizeSector } = require('../middleware/auth');
 const { query } = require('../db');
 
 const router = express.Router();
 
-// primeiro autentica, depois verifica setor DEV
+// **ordem:** primeiro autentica, depois autoriza só DEV
 router.use(authenticate);
 router.use(authorizeSector('DEV'));
 
