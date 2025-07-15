@@ -68,7 +68,6 @@ function parseJwt(token) {
 }
 
 export default function App() {
-  // Theme
   const [mode, setMode] = useState(localStorage.getItem('mode') || 'light');
   const theme = mode === 'light' ? lightTheme : darkTheme;
   const toggleColorMode = () => {
@@ -77,7 +76,6 @@ export default function App() {
     localStorage.setItem('mode', next);
   };
 
-  // Auth
   const [token, setToken] = useState(
     localStorage.getItem('token') || sessionStorage.getItem('token')
   );
@@ -113,7 +111,6 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Atendimentos
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
@@ -123,9 +120,15 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(res => (res.ok ? res.json() : Promise.reject()))
+      .then(res => {
+        if (res.status === 401) {
+          handleLogout();
+          return Promise.reject();
+        }
+        return res.ok ? res.json() : Promise.reject();
+      })
       .then(data => setAtendimentos(data))
-      .catch(() => alert('Falha ao carregar atendimentos.'));
+      .catch(() => console.log('Falha ao carregar atendimentos.'));
   };
 
   useEffect(() => {
@@ -139,16 +142,28 @@ export default function App() {
     fetch(`${API_URL}/api/atendimentos/${id}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + token }
-    }).then(() => fetchAtendimentos());
+    })
+      .then(res => {
+        if (res.status === 401) {
+          handleLogout();
+          return Promise.reject();
+        }
+        fetchAtendimentos();
+      });
   };
 
-  // === CORRIGIDO AQUI! ===
   const generateReport = () => {
     if (!reportDate) return alert('Selecione uma data');
     fetch(`${API_URL}/api/atendimentos/report/${reportDate}`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(res => (res.ok ? res.blob() : Promise.reject()))
+      .then(res => {
+        if (res.status === 401) {
+          handleLogout();
+          return Promise.reject();
+        }
+        return res.ok ? res.blob() : Promise.reject();
+      })
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -167,21 +182,10 @@ export default function App() {
       </Toolbar>
       <Divider />
       <List>
-        {[
-          { key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
-          {
-            key: 'categories',
-            icon: <CategoryIcon />,
-            label: 'Categorias',
-            auth: ['DEV', 'SAF'].includes(user?.sector)
-          },
-          {
-            key: 'users',
-            icon: <PeopleIcon />,
-            label: 'Usuários',
-            auth: user?.sector === 'DEV'
-          },
-          { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
+        {[{ key: 'atendimentos', icon: <EventIcon />, label: 'Atendimentos' },
+        { key: 'categories', icon: <CategoryIcon />, label: 'Categorias', auth: ['DEV', 'SAF'].includes(user?.sector) },
+        { key: 'users', icon: <PeopleIcon />, label: 'Usuários', auth: user?.sector === 'DEV' },
+        { key: 'reports', icon: <BarChartIcon />, label: 'Relatórios' }
         ].map(item => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton
@@ -213,21 +217,10 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <AppBar
-          position="fixed"
-          sx={{
-            zIndex: theme => theme.zIndex.drawer + 1,
-            ml: { md: `${drawerWidth}px` }
-          }}
-        >
+        <AppBar position="fixed" sx={{ zIndex: theme => theme.zIndex.drawer + 1, ml: { md: `${drawerWidth}px` } }}>
           <Toolbar>
             {user && (
-              <IconButton
-                color="inherit"
-                edge="start"
-                onClick={() => setMobileOpen(o => !o)}
-                sx={{ mr: 2, display: { md: 'none' } }}
-              >
+              <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(o => !o)} sx={{ mr: 2, display: { md: 'none' } }}>
                 <MenuIcon />
               </IconButton>
             )}
@@ -264,16 +257,7 @@ export default function App() {
           }}
         >
           {!user ? (
-            <Container
-              maxWidth="xs"
-              sx={{
-                mt: 8,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2
-              }}
-            >
+            <Container maxWidth="xs" sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
               {view === 'login' ? (
                 <Login onLogin={handleLogin} showRegister={() => setView('register')} />
               ) : (
@@ -284,7 +268,6 @@ export default function App() {
             <>
               {view === 'atendimentos' && (
                 <Grid container spacing={4}>
-                  {/* Formulário */}
                   <Grid item xs={12}>
                     <StyledPaper>
                       <AtendimentoForm
@@ -300,17 +283,9 @@ export default function App() {
                       />
                     </StyledPaper>
                   </Grid>
-                  {/* Lista */}
                   <Grid item xs={12}>
                     <StyledPaper>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          mb: 2
-                        }}
-                      >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h6">Atendimentos</Typography>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                           <TextField

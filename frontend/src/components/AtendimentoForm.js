@@ -1,4 +1,3 @@
-// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import {
   Paper,
@@ -97,8 +96,12 @@ export default function AtendimentoForm({
     })
       .then(r => {
         if (!r.ok) throw new Error();
+        if (isEdit) {
+          onUpdate && onUpdate();
+        } else {
+          onAdd && onAdd(); // <- garante atualização imediata após criação
+        }
         clearEditing();
-        isEdit ? onUpdate() : onAdd();
         setForm(f => ({
           ...f,
           dia: today,
