@@ -21,7 +21,8 @@ router.get('/', async (req, res) => {
         ocorrencia
       FROM atendimentos
       ORDER BY dia DESC, hora_inicio DESC
-      `
+      `,
+      []
     );
     res.json(rows);
   } catch (err) {
@@ -30,7 +31,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Criar novo atendimento + emitir evento via socket
+// Criar novo atendimento
 router.post('/', async (req, res) => {
   try {
     const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
@@ -45,7 +46,7 @@ router.post('/', async (req, res) => {
       [id, atendente, setor, dia, horaInicio, horaFim, loja, contato, ocorrencia]
     );
 
-    const novoAtendimento = {
+    res.status(201).json({
       id,
       atendente,
       setor,
@@ -55,14 +56,7 @@ router.post('/', async (req, res) => {
       loja,
       contato,
       ocorrencia
-    };
-
-    // 🔴 EMISSÃO DO EVENTO SOCKET PARA TODOS OS CLIENTES
-    if (req.io) {
-      req.io.emit('novo-atendimento', novoAtendimento);
-    }
-
-    res.status(201).json(novoAtendimento);
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erro ao criar atendimento.' });

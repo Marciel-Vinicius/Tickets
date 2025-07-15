@@ -1,3 +1,4 @@
+// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import {
   CssBaseline,
@@ -27,7 +28,6 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
-import { io } from 'socket.io-client';
 import { lightTheme, darkTheme } from './theme';
 import API_URL from './config';
 
@@ -136,14 +136,6 @@ export default function App() {
       fetchAtendimentos();
     }
   }, [token]);
-
-  useEffect(() => {
-    const socket = io(API_URL.replace('/api', ''));
-    socket.on('novo-atendimento', () => {
-      fetchAtendimentos();
-    });
-    return () => socket.disconnect();
-  }, []);
 
   const handleDelete = id => {
     if (!window.confirm('Confirma exclusão?')) return;
