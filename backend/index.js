@@ -7,8 +7,7 @@ const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const categoriesRouter = require('./routes/categories');
 const atendimentosRouter = require('./routes/atendimentos');
-// se você tiver um arquivo de relatório separado, importe aqui
-// const reportRouter = require('./routes/report');
+const reportsRouter = require('./routes/reports'); // ← importe aqui
 
 const { authenticate } = require('./middleware/auth');
 
@@ -27,8 +26,9 @@ app.use(authenticate);
 app.use('/api/users', usersRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/atendimentos', atendimentosRouter);
-// se tiver reportRouter separado:
-// app.use('/api/atendimentos/report', reportRouter);
+
+// → rotas de relatórios
+app.use('/api/reports', reportsRouter);
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
