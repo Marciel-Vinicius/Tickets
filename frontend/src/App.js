@@ -1,5 +1,5 @@
 // frontend/src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CssBaseline,
   AppBar,
@@ -83,6 +83,10 @@ export default function App() {
   const [view, setView] = useState('login');
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // referência do timer de logout
+  const logoutTimer = useRef(null);
+
+  // sempre que token mudar, define usuário e view
   useEffect(() => {
     if (token) {
       setUser(parseJwt(token));
@@ -93,93 +97,56 @@ export default function App() {
     }
   }, [token]);
 
+  // dispara no login: guarda token e timestamp
   const handleLogin = (t, remember) => {
+    const now = Date.now().toString();
     if (remember) {
       localStorage.setItem('token', t);
+      localStorage.setItem('loginTime', now);
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('loginTime');
     } else {
       sessionStorage.setItem('token', t);
+      sessionStorage.setItem('loginTime', now);
       localStorage.removeItem('token');
+      localStorage.removeItem('loginTime');
     }
     setToken(t);
   };
 
+  // limpa tudo no logout
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('loginTime');
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('loginTime');
     setToken(null);
     setMobileOpen(false);
   };
 
-  // Novos estados
-  const [atendimentos, setAtendimentos] = useState([]);
-  const [reportDate, setReportDate] = useState('');
-  const [editingAtendimento, setEditingAtendimento] = useState(null);
-
-  // Função para (re)carregar atendimentos
-  const fetchAtendimentos = () => {
-    if (!token) return;
-    fetch(`${API_URL}/api/atendimentos`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          handleLogout();
-          return Promise.reject();
-        }
-        return res.ok ? res.json() : Promise.reject();
-      })
-      .then(data => setAtendimentos(data))
-      .catch(() => console.log('Falha ao carregar atendimentos.'));
-  };
-
-  // Carrega ao logar
+  // agenda logout automático 1h após loginTime
   useEffect(() => {
     if (token) {
-      fetchAtendimentos();
+      // pega loginTime de onde estiver
+      const storedTime =
+        localStorage.getItem('loginTime') || sessionStorage.getItem('loginTime') || '0';
+      const loginTime = parseInt(storedTime, 10);
+      const elapsed = Date.now() - loginTime;
+      const maxDur = 60 * 60 * 1000; // 1h em ms
+      const remaining = maxDur - elapsed;
+
+      if (remaining <= 0) {
+        handleLogout();
+      } else {
+        logoutTimer.current = setTimeout(handleLogout, remaining);
+      }
     }
+    return () => {
+      if (logoutTimer.current) clearTimeout(logoutTimer.current);
+    };
   }, [token]);
 
-  // Excluir e recarregar
-  const handleDelete = id => {
-    if (!window.confirm('Confirma exclusão?')) return;
-    fetch(`${API_URL}/api/atendimentos/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          handleLogout();
-          return Promise.reject();
-        }
-        fetchAtendimentos();
-      });
-  };
-
-  // Gerar PDF de relatório
-  const generateReport = () => {
-    if (!reportDate) return alert('Selecione uma data');
-    fetch(`${API_URL}/api/atendimentos/report/${reportDate}`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(res => {
-        if (res.status === 401) {
-          handleLogout();
-          return Promise.reject();
-        }
-        return res.ok ? res.blob() : Promise.reject();
-      })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `relatorio-${reportDate}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-      })
-      .catch(() => alert('Erro ao gerar relatório'));
-  };
-
+  // opções de menu
   const drawer = (
     <>
       <Toolbar>
@@ -228,6 +195,68 @@ export default function App() {
       </List>
     </>
   );
+
+  // estados e funções de atendimentos, relatórios etc.
+  const [atendimentos, setAtendimentos] = useState([]);
+  const [reportDate, setReportDate] = useState('');
+  const [editingAtendimento, setEditingAtendimento] = useState(null);
+
+  const fetchAtendimentos = () => {
+    if (!token) return;
+    fetch(`${API_URL}/api/atendimentos`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          handleLogout();
+          return Promise.reject();
+        }
+        return res.ok ? res.json() : Promise.reject();
+      })
+      .then(data => setAtendimentos(data))
+      .catch(() => console.log('Falha ao carregar atendimentos.'));
+  };
+
+  useEffect(() => {
+    if (token) fetchAtendimentos();
+  }, [token]);
+
+  const handleDelete = id => {
+    if (!window.confirm('Confirma exclusão?')) return;
+    fetch(`${API_URL}/api/atendimentos/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token }
+    }).then(res => {
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+      fetchAtendimentos();
+    });
+  };
+
+  const generateReport = () => {
+    if (!reportDate) return alert('Selecione uma data');
+    fetch(`${API_URL}/api/atendimentos/report/${reportDate}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          handleLogout();
+          return Promise.reject();
+        }
+        return res.ok ? res.blob() : Promise.reject();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-${reportDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => alert('Erro ao gerar relatório'));
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -298,10 +327,7 @@ export default function App() {
               }}
             >
               {view === 'login' ? (
-                <Login
-                  onLogin={handleLogin}
-                  showRegister={() => setView('register')}
-                />
+                <Login onLogin={handleLogin} showRegister={() => setView('register')} />
               ) : (
                 <Register showLogin={() => setView('login')} />
               )}
@@ -345,10 +371,7 @@ export default function App() {
                             onChange={e => setReportDate(e.target.value)}
                             InputLabelProps={{ shrink: true }}
                           />
-                          <Button
-                            variant="contained"
-                            onClick={generateReport}
-                          >
+                          <Button variant="contained" onClick={generateReport}>
                             Gerar Relatório
                           </Button>
                         </Box>
