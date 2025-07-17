@@ -70,4 +70,3 @@ export default function Register({ showLogin }) {
     </Card>
   );
 }
-// Cria
