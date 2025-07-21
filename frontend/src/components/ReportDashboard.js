@@ -1,18 +1,29 @@
+// frontend/src/components/ReportDashboard.js
 import React, { useEffect, useState } from "react";
-import {
-    Box, Typography, Grid, Paper, CircularProgress
-} from "@mui/material";
-import {
-    Bar, Line, Pie
-} from "react-chartjs-2";
+import { Box, Typography, Grid, Paper, CircularProgress } from "@mui/material";
+import { Bar, Line, Pie } from "react-chartjs-2";
 import {
     Chart as ChartJS,
-    BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
+    BarElement,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    ArcElement,
+    Tooltip,
+    Legend
 } from "chart.js";
 import API_URL from "../config";
 
 ChartJS.register(
-    BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
+    BarElement,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    ArcElement,
+    Tooltip,
+    Legend
 );
 
 // CORES fixas
@@ -60,58 +71,67 @@ export default function ReportDashboard({ token }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!token) return;
         setLoading(true);
+        const headers = { Authorization: 'Bearer ' + token };
+
+        const fetchData = async (endpoint, defaultValue) => {
+            try {
+                const res = await fetch(`${API_URL}/api/reports/${endpoint}`, { headers });
+                if (!res.ok) return defaultValue;
+                return await res.json();
+            } catch (err) {
+                console.error(`Erro ao buscar ${endpoint}:`, err);
+                return defaultValue;
+            }
+        };
+
         Promise.all([
-            fetch(`${API_URL}/api/reports/summary`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-            fetch(`${API_URL}/api/reports/byUser`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-            fetch(`${API_URL}/api/reports/byDay`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-            fetch(`${API_URL}/api/reports/byStore`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-            fetch(`${API_URL}/api/reports/byOccurrence`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-            fetch(`${API_URL}/api/reports/bySector`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-            fetch(`${API_URL}/api/reports/byMonth`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json())
+            fetchData("summary", {}),
+            fetchData("byUser", []),
+            fetchData("byDay", []),
+            fetchData("byStore", []),
+            fetchData("byOccurrence", []),
+            fetchData("bySector", []),
+            fetchData("byMonth", [])
         ]).then(([sum, user, day, store, occ, sector, month]) => {
             setSummary(sum);
-            setByUser(user);
-            setByDay(day.map(r => {
-                const [y, m, d] = r.dia.split('-');
-                return { ...r, dia: `${d}/${m}` };
-            }));
-            setByStore(store);
-            setByOccurrence(occ);
-            setBySector(sector);
-            setByMonth(month.map(r => {
-                const [y, m] = r.mes.split('-');
-                return { ...r, mes: `${m}/${y}` };
-            }));
-            setLoading(false);
-        }).catch(err => {
-            console.error(err);
+            setByUser(Array.isArray(user) ? user : []);
+            setByDay(
+                Array.isArray(day) ? day.map(r => {
+                    const [y, m, d] = r.dia.split('-');
+                    return { ...r, dia: `${d}/${m}` };
+                }) : []
+            );
+            setByStore(Array.isArray(store) ? store : []);
+            setByOccurrence(Array.isArray(occ) ? occ : []);
+            setBySector(Array.isArray(sector) ? sector : []);
+            setByMonth(
+                Array.isArray(month) ? month.map(r => {
+                    const [y, m] = r.mes.split('-');
+                    return { ...r, mes: `${m}/${y}` };
+                }) : []
+            );
             setLoading(false);
         });
     }, [token]);
 
-    if (loading) return (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-            <CircularProgress />
-        </Box>
-    );
+    if (loading) {
+        return (
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
-    // Preparação dos datasets para Chart.js
+    // Dados para Chart.js
     const barUser = {
         labels: byUser.map(i => i.atendente),
-        datasets: [{
-            label: "Atendimentos",
-            data: byUser.map(i => i.count),
-            backgroundColor: COLORS
-        }]
+        datasets: [{ label: "Atendimentos", data: byUser.map(i => i.count), backgroundColor: COLORS }]
     };
     const barSector = {
         labels: bySector.map(i => i.setor),
-        datasets: [{
-            label: "Atendimentos",
-            data: bySector.map(i => i.count),
-            backgroundColor: COLORS
-        }]
+        datasets: [{ label: "Atendimentos", data: bySector.map(i => i.count), backgroundColor: COLORS }]
     };
     const lineDay = {
         labels: byDay.map(i => i.dia),
@@ -119,9 +139,9 @@ export default function ReportDashboard({ token }) {
             label: "Atendimentos",
             data: byDay.map(i => i.count),
             fill: false,
-            borderColor: "#1976d2",
+            borderColor: COLORS[0],
             tension: 0.3,
-            pointBackgroundColor: "#1976d2"
+            pointBackgroundColor: COLORS[0]
         }]
     };
     const lineMonth = {
@@ -130,46 +150,37 @@ export default function ReportDashboard({ token }) {
             label: "Atendimentos",
             data: byMonth.map(i => i.count),
             fill: false,
-            borderColor: "#fbc02d",
+            borderColor: COLORS[3],
             tension: 0.3,
-            pointBackgroundColor: "#fbc02d"
+            pointBackgroundColor: COLORS[3]
         }]
     };
     const pieStore = {
-        labels: byStore.map(i => i.loja.length > 15 ? i.loja.slice(0, 14) + "..." : i.loja),
-        datasets: [{
-            data: byStore.map(i => i.count),
-            backgroundColor: COLORS,
-            borderWidth: 1
-        }]
+        labels: byStore.map(i => i.loja.length > 15 ? i.loja.slice(0, 14) + "…" : i.loja),
+        datasets: [{ data: byStore.map(i => i.count), backgroundColor: COLORS, borderWidth: 1 }]
     };
     const pieOccurrence = {
-        labels: byOccurrence.map(i => i.ocorrencia.length > 15 ? i.ocorrencia.slice(0, 14) + "..." : i.ocorrencia),
-        datasets: [{
-            data: byOccurrence.map(i => i.count),
-            backgroundColor: COLORS,
-            borderWidth: 1
-        }]
+        labels: byOccurrence.map(i => i.ocorrencia.length > 15 ? i.ocorrencia.slice(0, 14) + "…" : i.ocorrencia),
+        datasets: [{ data: byOccurrence.map(i => i.count), backgroundColor: COLORS, borderWidth: 1 }]
     };
 
     return (
         <Box sx={{
-            width: "100vw",
-            minHeight: "100vh",
-            p: 0,
-            m: 0,
-            overflowX: "hidden",
+            width: "100%",
+            p: 2,
             background: "#fff"
         }}>
-            <Typography variant="h5" gutterBottom sx={{ ml: 4, mt: 2 }}>Painel de Relatórios</Typography>
-            {/* Cards de resumo */}
-            <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
-                {[{ title: "Tempo Médio", value: summary?.averageTime || "-" },
-                { title: "Total Atend.", value: summary?.total || 0 },
-                { title: "Top Atendente", value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : "-" }
+            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Painel de Relatórios</Typography>
+
+            {/* Resumo */}
+            <Grid container spacing={2} mb={2}>
+                {[
+                    { title: "Tempo Médio", value: summary.averageTime ?? "-" },
+                    { title: "Total Atend.", value: summary.total ?? 0 },
+                    { title: "Top Atendente", value: summary.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : "-" }
                 ].map((c, i) => (
                     <Grid key={i} item xs={12} sm={6} md={4} lg={2.4}>
-                        <Paper elevation={3} sx={{ p: 2, mb: 1 }}>
+                        <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="subtitle1">{c.title}</Typography>
                             <Typography variant="h4">{c.value}</Typography>
                         </Paper>
@@ -177,86 +188,45 @@ export default function ReportDashboard({ token }) {
                 ))}
             </Grid>
 
-            {/* Linha 1 de gráficos */}
-            <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Atendimentos por Usuário" empty={!byUser?.length}>
-                        {byUser?.length > 0 &&
-                            <Bar data={barUser} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
+            {/* Gráficos */}
+            <Grid container spacing={2} mb={2}>
+                <Grid item xs={12} md={4}>
+                    <CardChart title="Atendimentos por Usuário" empty={!byUser.length}>
+                        <Bar data={barUser} options={{ responsive: true, plugins: { legend: { display: false } } }} height={250} />
                     </CardChart>
                 </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Atendimentos por Dia" empty={!byDay?.length}>
-                        {byDay?.length > 0 &&
-                            <Line data={lineDay} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
+                <Grid item xs={12} md={4}>
+                    <CardChart title="Atendimentos por Dia" empty={!byDay.length}>
+                        <Line data={lineDay} options={{ responsive: true, plugins: { legend: { display: false } } }} height={250} />
                     </CardChart>
                 </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Evolução Mensal (Últimos 6 Meses)" empty={!byMonth?.length}>
-                        {byMonth?.length > 0 &&
-                            <Line data={lineMonth} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
+                <Grid item xs={12} md={4}>
+                    <CardChart title="Evolução Mensal" empty={!byMonth.length}>
+                        <Line data={lineMonth} options={{ responsive: true, plugins: { legend: { display: false } } }} height={250} />
                     </CardChart>
                 </Grid>
             </Grid>
 
-            {/* Linha 2 de gráficos */}
-            <Grid container spacing={2} sx={{ pl: 3, pr: 3, pb: 2 }}>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Top Lojas" empty={!byStore?.length}>
-                        {byStore?.length > 0 &&
-                            <Pie data={pieStore} options={{
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        display: true,
-                                        position: "bottom",
-                                        labels: { font: { size: 12 } }
-                                    }
-                                }
-                            }} height={250} />
-                        }
+            <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                    <CardChart title="Top Lojas" empty={!byStore.length}>
+                        <Pie data={pieStore} options={{
+                            responsive: true,
+                            plugins: { legend: { position: "bottom", labels: { font: { size: 12 } } } }
+                        }} height={250} />
                     </CardChart>
                 </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Top Ocorrências" empty={!byOccurrence?.length}>
-                        {byOccurrence?.length > 0 &&
-                            <Pie data={pieOccurrence} options={{
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        display: true,
-                                        position: "bottom",
-                                        labels: { font: { size: 12 } }
-                                    }
-                                }
-                            }} height={250} />
-                        }
+                <Grid item xs={12} md={4}>
+                    <CardChart title="Top Ocorrências" empty={!byOccurrence.length}>
+                        <Pie data={pieOccurrence} options={{
+                            responsive: true,
+                            plugins: { legend: { position: "bottom", labels: { font: { size: 12 } } } }
+                        }} height={250} />
                     </CardChart>
                 </Grid>
-                <Grid item xs={12} md={4} lg={4} xl={4}>
-                    <CardChart title="Atendimentos por Setor" empty={!bySector?.length}>
-                        {bySector?.length > 0 &&
-                            <Bar data={barSector} options={{
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
-                            }} height={250} />
-                        }
+                <Grid item xs={12} md={4}>
+                    <CardChart title="Atendimentos por Setor" empty={!bySector.length}>
+                        <Bar data={barSector} options={{ responsive: true, plugins: { legend: { display: false } } }} height={250} />
                     </CardChart>
                 </Grid>
             </Grid>
