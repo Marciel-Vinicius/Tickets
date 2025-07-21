@@ -16,7 +16,6 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function CategoryManagement({ token }) {
     const [tab, setTab] = useState('lojas');
@@ -24,7 +23,6 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ oldValue: '', value: '' });
 
-    // Busca categorias do servidor e normaliza em objetos { value, active? }
     const fetchData = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
@@ -32,11 +30,9 @@ export default function CategoryManagement({ token }) {
             .then(r => r.json())
             .then(obj => {
                 const list = obj[tab];
-                // Se forem strings (lojas ou ocorrencias), converte em objetos
                 if (list.length === 0 || typeof list[0] === 'string') {
                     setData(list.map(v => ({ value: v })));
                 } else {
-                    // contatos já vem como { value, active }
                     setData(list);
                 }
             })
@@ -50,7 +46,6 @@ export default function CategoryManagement({ token }) {
     const handleEdit = row => { setCurrent({ oldValue: row.value, value: row.value }); setOpen(true); };
     const handleClose = () => setOpen(false);
 
-    // Salvar criação ou edição
     const handleSave = () => {
         const method = current.oldValue ? 'PUT' : 'POST';
         const path = current.oldValue ? `/${encodeURIComponent(current.oldValue)}` : '';
@@ -70,7 +65,6 @@ export default function CategoryManagement({ token }) {
             .catch(() => alert('Erro ao salvar'));
     };
 
-    // Inativar contato
     const handleInativar = row => {
         fetch(
             `${API_URL}/api/categories/contatos/${encodeURIComponent(row.value)}/inativar`,
@@ -83,57 +77,60 @@ export default function CategoryManagement({ token }) {
             .catch(() => alert('Erro ao inativar contato'));
     };
 
-    // Deletar loja ou ocorrência
-    const handleDelete = row => {
-        fetch(
-            `${API_URL}/api/categories/${tab}/${encodeURIComponent(row.value)}`,
-            { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
-        )
-            .then(res => {
-                if (!res.ok) throw new Error();
-                fetchData();
-            })
-            .catch(() => alert('Erro ao apagar'));
-    };
-
-    // Define colunas para cada aba
-    const baseColumn = {
-        field: 'value',
-        headerName: tab === 'lojas' ? 'Loja' : tab === 'contatos' ? 'Contato' : 'Ocorrência',
-        flex: 1
-    };
-
-    const actionColumn = {
-        field: 'actions',
-        headerName: 'Ações',
-        flex: 0.5,
+    const baseColumn = { field: 'value', headerName: tab === 'lojas' ? 'Loja' : tab === 'contatos' ? 'Contato' : 'Ocorrência', flex: 1 };
+    const editColumn = {
+        field: 'edit',
+        headerName: 'Editar',
+        width: 80,
         sortable: false,
         renderCell: params => (
-            <>
+            <IconButton onClick={() => handleEdit(params.row)}>
+                <EditIcon />
+            </IconButton>
+        )
+    };
+
+    const contactsColumns = [
+        baseColumn,
+        {
+            field: 'active',
+            headerName: 'Status',
+            width: 130,
+            sortable: false,
+            renderCell: params =>
+                params.row.active ? (
+                    <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => handleInativar(params.row)}
+                    >
+                        Inativar
+                    </Button>
+                ) : (
+                    <Button variant="outlined" size="small" disabled>
+                        Inativo
+                    </Button>
+                )
+        },
+        editColumn
+    ];
+
+    const otherColumns = [
+        baseColumn,
+        {
+            field: 'actions',
+            headerName: 'Ações',
+            flex: 0.5,
+            sortable: false,
+            renderCell: params => (
                 <IconButton onClick={() => handleEdit(params.row)}>
                     <EditIcon />
                 </IconButton>
-                {tab === 'contatos' ? (
-                    <IconButton onClick={() => handleInativar(params.row)}>
-                        <DeleteIcon />
-                    </IconButton>
-                ) : (
-                    <IconButton onClick={() => handleDelete(params.row)}>
-                        <DeleteIcon />
-                    </IconButton>
-                )}
-            </>
-        )
-    };
+            )
+        }
+    ];
 
-    const columns =
-        tab === 'contatos'
-            ? [
-                baseColumn,
-                { field: 'active', headerName: 'Ativo', width: 100 },
-                actionColumn
-            ]
-            : [baseColumn, actionColumn];
+    const columns = tab === 'contatos' ? contactsColumns : otherColumns;
 
     return (
         <Box>
@@ -155,7 +152,7 @@ export default function CategoryManagement({ token }) {
                 <DataGrid
                     rows={data}
                     columns={columns}
-                    getRowId={row => row.value}        // Usa "value" como ID único
+                    getRowId={row => row.value}
                     pageSize={5}
                     rowsPerPageOptions={[5]}
                 />
@@ -174,9 +171,7 @@ export default function CategoryManagement({ token }) {
                     <TextField
                         label="Valor"
                         value={current.value}
-                        onChange={e =>
-                            setCurrent(p => ({ ...p, value: e.target.value }))
-                        }
+                        onChange={e => setCurrent(p => ({ ...p, value: e.target.value }))}
                         fullWidth
                         sx={{ mt: 2 }}
                     />
