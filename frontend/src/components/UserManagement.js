@@ -2,10 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-    Box, Typography, IconButton,
-    Dialog, DialogTitle, DialogContent,
-    DialogActions, TextField, Button,
-    FormControl, InputLabel, Select, MenuItem
+    Box,
+    Typography,
+    IconButton,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    Button,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
@@ -25,7 +34,10 @@ export default function UserManagement({ token }) {
     };
     useEffect(fetchUsers, []);
 
-    const handleEdit = u => { setCurrent({ username: u.username, sector: u.sector, password: '' }); setOpen(true); };
+    const handleEdit = u => {
+        setCurrent({ username: u.username, sector: u.sector, password: '' });
+        setOpen(true);
+    };
     const handleClose = () => setOpen(false);
     const handleSave = () => {
         fetch(`${API_URL}/api/users/${current.username}`, {
@@ -34,15 +46,36 @@ export default function UserManagement({ token }) {
                 'Content-Type': 'application/json',
                 Authorization: 'Bearer ' + token
             },
-            body: JSON.stringify({ sector: current.sector, password: current.password || undefined })
+            body: JSON.stringify({
+                sector: current.sector,
+                password: current.password || undefined
+            })
         })
-            .then(r => r.ok ? r.json() : Promise.reject())
-            .then(() => { fetchUsers(); setOpen(false); })
+            .then(r => (r.ok ? r.json() : Promise.reject()))
+            .then(() => {
+                fetchUsers();
+                setOpen(false);
+            })
             .catch(() => alert('Erro ao salvar usuário'));
     };
 
     const columns = [
-        { field: 'username', headerName: 'Usuário', flex: 1 },
+        {
+            field: 'username',
+            headerName: 'Usuário',
+            flex: 1,
+            renderCell: params => (
+                <span>
+                    {params.value}{' '}
+                    <em>
+                        (
+                        {params.row.saturday_count}{' '}
+                        {params.row.saturday_count === 1 ? 'sábado' : 'sábados'}
+                        )
+                    </em>
+                </span>
+            )
+        },
         { field: 'sector', headerName: 'Setor', flex: 1 },
         {
             field: 'actions',
@@ -59,7 +92,9 @@ export default function UserManagement({ token }) {
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>Gerenciar Usuários</Typography>
+            <Typography variant="h5" gutterBottom>
+                Gerenciar Usuários
+            </Typography>
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={users}
@@ -73,16 +108,23 @@ export default function UserManagement({ token }) {
             <Dialog open={open} onClose={handleClose}>
                 <DialogTitle>Editar Usuário</DialogTitle>
                 <DialogContent sx={{ display: 'grid', gap: 2, width: 300, mt: 1 }}>
-                    <TextField label="Usuário" value={current.username} disabled fullWidth />
+                    <TextField
+                        label="Usuário"
+                        value={current.username}
+                        disabled
+                        fullWidth
+                    />
                     <FormControl fullWidth>
-                        <InputLabel id="sector-label">Setor</InputLabel>
+                        <InputLabel>Setor</InputLabel>
                         <Select
-                            labelId="sector-label"
                             value={current.sector}
                             label="Setor"
-                            onChange={e => setCurrent(p => ({ ...p, sector: e.target.value }))}
+                            onChange={e =>
+                                setCurrent(p => ({ ...p, sector: e.target.value }))
+                            }
                         >
                             <MenuItem value="DEV">DEV</MenuItem>
+                            <MenuItem value="TI">TI</MenuItem>
                             <MenuItem value="SAF">SAF</MenuItem>
                         </Select>
                     </FormControl>
@@ -90,13 +132,17 @@ export default function UserManagement({ token }) {
                         label="Nova senha"
                         type="password"
                         value={current.password}
-                        onChange={e => setCurrent(p => ({ ...p, password: e.target.value }))}
+                        onChange={e =>
+                            setCurrent(p => ({ ...p, password: e.target.value }))
+                        }
                         fullWidth
                     />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose}>Cancelar</Button>
-                    <Button onClick={handleSave} variant="contained">Salvar</Button>
+                    <Button onClick={handleSave} variant="contained">
+                        Salvar
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>

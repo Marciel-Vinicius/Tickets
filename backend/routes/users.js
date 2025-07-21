@@ -11,17 +11,44 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorizeSector('DEV'));
 
-// Listar
+// Listar usuários + contagem de sábados
 router.get('/', async (req, res) => {
-    const { rows } = await query('SELECT username, sector FROM users', []);
+    const sql = `
+    SELECT
+      u.username,
+      u.sector,
+      COALESCE(
+        COUNT(a.*) FILTER (
+          WHERE EXTRACT(DOW FROM a.dia) = 6
+        ),
+        0
+      ) AS saturday_count
+    FROM users u
+    LEFT JOIN atendimentos a
+      ON a.atendente = u.username
+    GROUP BY u.username, u.sector
+    ORDER BY u.username
+  `;
+    const { rows } = await query(sql, []);
     res.json(rows);
+});
+
+// Criar usuário
+router.post('/', async (req, res) => {
+    const { username, sector, password } = req.body;
+    if (!username || !sector || !password) return res.sendStatus(400);
+    const hash = bcrypt.hashSync(password, 8);
+    await query(
+        'INSERT INTO users(username, sector, password) VALUES($1, $2, $3)',
+        [username, sector, hash]
+    );
+    res.sendStatus(201);
 });
 
 // Atualizar setor e/ou senha
 router.put('/:username', async (req, res) => {
     const { username } = req.params;
     const { sector, password } = req.body;
-
     if (sector) {
         await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
     }
@@ -29,13 +56,19 @@ router.put('/:username', async (req, res) => {
         const hash = bcrypt.hashSync(password, 8);
         await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
     }
-
     const { rows } = await query(
         'SELECT username, sector FROM users WHERE username=$1',
         [username]
     );
     if (rows.length === 0) return res.sendStatus(404);
     res.json(rows[0]);
+});
+
+// Apagar usuário
+router.delete('/:username', async (req, res) => {
+    const { username } = req.params;
+    await query('DELETE FROM users WHERE username=$1', [username]);
+    res.sendStatus(204);
 });
 
 module.exports = router;
