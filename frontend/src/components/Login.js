@@ -55,6 +55,7 @@ export default function Login({ onLogin, showRegister }) {
             value={username}
             onChange={e => setUsername(e.target.value)}
             required
+            autoComplete="username"
           />
           <TextField
             label="Senha"
@@ -62,6 +63,7 @@ export default function Login({ onLogin, showRegister }) {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -100,4 +102,3 @@ export default function Login({ onLogin, showRegister }) {
     </Card>
   );
 }
-// Cria

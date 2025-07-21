@@ -26,7 +26,7 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
-    // Busca categorias quando muda a aba
+    // 1) Busca categorias quando muda a aba
     const fetchData = async () => {
         try {
             const res = await fetch(`${API_URL}/api/categories`, {
@@ -40,10 +40,9 @@ export default function CategoryManagement({ token }) {
             setData([]);
         }
     };
-
     useEffect(fetchData, [tab, token]);
 
-    // Abre modal de adicionar ou editar
+    // 2) Abre modal de adicionar ou editar
     const handleAdd = () => {
         setCurrent({ old: '', value: '' });
         setOpen(true);
@@ -53,11 +52,10 @@ export default function CategoryManagement({ token }) {
         setOpen(true);
     };
 
-    // Salva (POST ou PUT)
+    // 3) Salva (POST ou PUT)
     const handleSave = async () => {
         try {
-            const url = `${API_URL}/api/categories/${tab}` +
-                (current.old ? `?old=${encodeURIComponent(current.old)}` : '');
+            const url = `${API_URL}/api/categories/${tab}`;
             const method = current.old ? 'PUT' : 'POST';
             const body = current.old
                 ? { old: current.old, value: current.value }
@@ -79,7 +77,7 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // Inativa contato
+    // 4) Inativa contato
     const handleInactivate = async (value) => {
         if (!window.confirm('Confirma inativar este contato?')) return;
         try {
@@ -99,7 +97,7 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // Exclui loja ou ocorrência
+    // 5) Exclui loja ou ocorrência
     const handleDelete = async (value) => {
         if (!window.confirm('Confirma exclusão?')) return;
         try {
@@ -117,7 +115,7 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // Colunas do grid
+    // 6) Colunas do DataGrid (agora renderizando ações dentro de um Box)
     const columns = [
         { field: 'value', headerName: 'Valor', flex: 1 },
         {
@@ -128,7 +126,7 @@ export default function CategoryManagement({ token }) {
             renderCell: (params) => {
                 const val = params.row.value;
                 return (
-                    <>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
                         <IconButton
                             size="small"
                             onClick={() => handleEdit(val)}
@@ -150,13 +148,13 @@ export default function CategoryManagement({ token }) {
                                 <DeleteIcon fontSize="small" />
                             </IconButton>
                         )}
-                    </>
+                    </Box>
                 );
             },
         },
     ];
 
-    // Prepara as linhas, garantindo sempre um `id` único
+    // 7) Prepara as linhas, garantindo sempre um `id` único
     const rows = data
         .map((item) => {
             if (typeof item === 'string') {
