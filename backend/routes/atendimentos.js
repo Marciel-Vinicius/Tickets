@@ -77,13 +77,13 @@ router.put('/:id', async (req, res) => {
       `
       UPDATE atendimentos
       SET
-        atendente = $1,
-        dia        = $2,
-        hora_inicio = $3,
-        hora_fim   = $4,
-        loja       = $5,
-        contato    = $6,
-        ocorrencia = $7
+        atendente   = $1,
+        dia          = $2,
+        hora_inicio  = $3,
+        hora_fim     = $4,
+        loja         = $5,
+        contato      = $6,
+        ocorrencia   = $7
       WHERE id = $8
       `,
       [atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
@@ -107,10 +107,12 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Exportar relatório em PDF
+// Exportar relatório em PDF, marcando "4º plantão" no 4º sábado
 router.get('/report/:date', async (req, res) => {
-  const date = req.params.date;
+  const date = req.params.date;       // 'YYYY-MM-DD'
+  const atendente = req.user.username;
   try {
+    // 1) Buscar os registros do plantão do dia
     const { rows: items } = await query(
       `
       SELECT
@@ -126,19 +128,51 @@ router.get('/report/:date', async (req, res) => {
       [date]
     );
 
+    // 2) Contar quantos sábados distintos já trabalhou até essa data
+    const { rows: satRows } = await query(
+      `
+      SELECT
+        COALESCE(
+          COUNT(DISTINCT dia) FILTER (WHERE EXTRACT(DOW FROM dia) = 6),
+          0
+        ) AS count
+      FROM atendimentos
+      WHERE atendente = $1
+        AND dia <= $2::date
+      `,
+      [atendente, date]
+    );
+    const workedSaturdays = parseInt(satRows[0].count, 10) || 0;
+
+    // 3) Obter override de sábados iniciais (se existir)
+    const { rows: userRows } = await query(
+      `SELECT initial_saturdays FROM users WHERE username = $1`,
+      [atendente]
+    );
+    const initial = parseInt(userRows[0]?.initial_saturdays, 10) || 0;
+
+    // Total de sábados considerados
+    const saturdayCount = workedSaturdays + initial;
+
+    // 4) Gerar PDF
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      'attachment; filename="plantao-' + date + '.pdf"'
+      `attachment; filename="plantao-${date}.pdf"`
     );
     doc.pipe(res);
 
     // Cabeçalho
-    doc.font('Helvetica-Bold').fontSize(14).text('PLANTONISTA: ' + req.user.username);
+    doc.font('Helvetica-Bold').fontSize(14).text('PLANTONISTA: ' + atendente);
     doc.moveDown(0.5);
     const [y, m, d] = date.split('-');
-    doc.font('Helvetica').fontSize(12).text('Data: ' + d + '/' + m + '/' + y);
+    let dateText = `Data: ${d}/${m}/${y}`;
+    // Se for múltiplo de 4, marca o plantão
+    if (saturdayCount > 0 && saturdayCount % 4 === 0) {
+      dateText += ` (${saturdayCount}º plantão)`;
+    }
+    doc.font('Helvetica').fontSize(12).text(dateText);
     doc.moveDown();
 
     // Títulos das colunas
@@ -151,50 +185,36 @@ router.get('/report/:date', async (req, res) => {
     doc.text('Ocorrência', 360, startY, { width: 200 });
     doc.moveDown(0.5);
 
-    // Dados das linhas
+    // Linhas de dados
     const colXs = [40, 100, 160, 260, 360];
     const colWidths = [60, 60, 100, 100, 200];
     let currentY = doc.y;
     const rowYs = [];
 
     items.forEach(item => {
-      const heights = [
-        doc.heightOfString(item.hora_inicio, { width: colWidths[0] }),
-        doc.heightOfString(item.hora_fim || '-', { width: colWidths[1] }),
-        doc.heightOfString(item.loja, { width: colWidths[2] }),
-        doc.heightOfString(item.contato, { width: colWidths[3] }),
-        doc.heightOfString(item.ocorrencia, { width: colWidths[4] })
-      ];
-      const maxHeight = Math.max(...heights) + 10;
-      rowYs.push({ y: currentY, h: maxHeight });
+      // calcular altura da linha
+      const heights = colWidths.map((w, i) =>
+        doc.heightOfString(
+          [item.hora_inicio, item.hora_fim || '-', item.loja, item.contato, item.ocorrencia][i],
+          { width: w }
+        )
+      );
+      const rowHeight = Math.max(...heights) + 10;
+      rowYs.push({ y: currentY, h: rowHeight });
 
-      const yCenter = currentY + maxHeight / 2;
+      // centralizar verticalmente
+      const yCenter = currentY + rowHeight / 2;
       doc.font('Helvetica').fontSize(10);
-      doc.text(item.hora_inicio, colXs[0], yCenter - heights[0] / 2, {
-        width: colWidths[0],
-        align: 'center'
-      });
-      doc.text(item.hora_fim || '-', colXs[1], yCenter - heights[1] / 2, {
-        width: colWidths[1],
-        align: 'center'
-      });
-      doc.text(item.loja, colXs[2], yCenter - heights[2] / 2, {
-        width: colWidths[2],
-        align: 'center'
-      });
-      doc.text(item.contato, colXs[3], yCenter - heights[3] / 2, {
-        width: colWidths[3],
-        align: 'center'
-      });
-      doc.text(item.ocorrencia, colXs[4], yCenter - heights[4] / 2, {
-        width: colWidths[4],
-        align: 'center'
-      });
+      doc.text(item.hora_inicio, colXs[0], yCenter - heights[0] / 2, { width: colWidths[0], align: 'center' });
+      doc.text(item.hora_fim || '-', colXs[1], yCenter - heights[1] / 2, { width: colWidths[1], align: 'center' });
+      doc.text(item.loja, colXs[2], yCenter - heights[2] / 2, { width: colWidths[2], align: 'center' });
+      doc.text(item.contato, colXs[3], yCenter - heights[3] / 2, { width: colWidths[3], align: 'center' });
+      doc.text(item.ocorrencia, colXs[4], yCenter - heights[4] / 2, { width: colWidths[4], align: 'left' });
 
-      currentY += maxHeight;
+      currentY += rowHeight;
     });
 
-    // Linhas da tabela
+    // Desenhar linhas da tabela
     rowYs.forEach(row => {
       doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
     });
@@ -203,7 +223,7 @@ router.get('/report/:date', async (req, res) => {
       doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
     });
 
-    // Rodapé
+    // Rodapé de assinaturas
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const lineW = 210;
     doc.font('Helvetica').fontSize(12);
