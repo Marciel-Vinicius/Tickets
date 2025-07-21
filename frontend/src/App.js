@@ -120,7 +120,7 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Força logout de todos os usuários (aparece apenas para Marciel - DEV)
+  // Força logout de todos os usuários — só aparece quando for o Marciel (DEV)
   const handleLogoutAll = () => {
     fetch(`${API_URL}/api/auth/logout-all`, {
       method: 'POST',
@@ -291,11 +291,13 @@ export default function App() {
             <IconButton color="inherit" onClick={toggleColorMode}>
               {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
             </IconButton>
-            {user?.username === 'Marciel' && user?.sector === 'DEV' && (
-              <Button color="inherit" onClick={handleLogoutAll}>
-                Deslogar Todos
-              </Button>
-            )}
+            {/* Aparece apenas se usuário for exatamente 'marciel' (case-insensitive) e DEV */}
+            {user?.sector === 'DEV' &&
+              user?.username?.toLowerCase() === 'marciel' && (
+                <Button color="inherit" onClick={handleLogoutAll}>
+                  Deslogar Todos
+                </Button>
+              )}
           </Toolbar>
         </AppBar>
 
