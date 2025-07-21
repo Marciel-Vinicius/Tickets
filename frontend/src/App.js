@@ -83,8 +83,10 @@ export default function App() {
   const [view, setView] = useState('login');
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // referência do timer de logout
   const logoutTimer = useRef(null);
 
+  // sempre que token mudar, define usuário e view
   useEffect(() => {
     if (token) {
       setUser(parseJwt(token));
@@ -95,6 +97,7 @@ export default function App() {
     }
   }, [token]);
 
+  // dispara no login: guarda token e timestamp
   const handleLogin = (t, remember) => {
     const now = Date.now().toString();
     if (remember) {
@@ -111,6 +114,7 @@ export default function App() {
     setToken(t);
   };
 
+  // limpa tudo no logout
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('loginTime');
@@ -120,26 +124,15 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  // Força logout de todos os usuários — só aparece quando for o Marciel (DEV)
-  const handleLogoutAll = () => {
-    fetch(`${API_URL}/api/auth/logout-all`, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error();
-        alert('Todos foram desconectados. Eles precisarão fazer login novamente.');
-      })
-      .catch(() => alert('Erro ao desconectar todos.'));
-  };
-
+  // agenda logout automático 1h após loginTime
   useEffect(() => {
     if (token) {
+      // pega loginTime de onde estiver
       const storedTime =
         localStorage.getItem('loginTime') || sessionStorage.getItem('loginTime') || '0';
       const loginTime = parseInt(storedTime, 10);
       const elapsed = Date.now() - loginTime;
-      const maxDur = 60 * 60 * 1000; // 1h
+      const maxDur = 60 * 60 * 1000; // 1h em ms
       const remaining = maxDur - elapsed;
 
       if (remaining <= 0) {
@@ -153,6 +146,7 @@ export default function App() {
     };
   }, [token]);
 
+  // opções de menu
   const drawer = (
     <>
       <Toolbar>
@@ -202,6 +196,7 @@ export default function App() {
     </>
   );
 
+  // estados e funções de atendimentos, relatórios etc.
   const [atendimentos, setAtendimentos] = useState([]);
   const [reportDate, setReportDate] = useState('');
   const [editingAtendimento, setEditingAtendimento] = useState(null);
@@ -291,13 +286,6 @@ export default function App() {
             <IconButton color="inherit" onClick={toggleColorMode}>
               {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
             </IconButton>
-            {/* Aparece apenas se usuário for exatamente 'marciel' (case-insensitive) e DEV */}
-            {user?.sector === 'DEV' &&
-              user?.username?.toLowerCase() === 'marciel' && (
-                <Button color="inherit" onClick={handleLogoutAll}>
-                  Deslogar Todos
-                </Button>
-              )}
           </Toolbar>
         </AppBar>
 

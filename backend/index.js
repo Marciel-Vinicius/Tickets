@@ -7,24 +7,16 @@ const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const categoriesRouter = require('./routes/categories');
 const atendimentosRouter = require('./routes/atendimentos');
-const reportsRouter = require('./routes/reports');
+const reportsRouter = require('./routes/reports'); // ← importe aqui
 
 const { authenticate } = require('./middleware/auth');
 
 const app = express();
 
-// Configure CORS para permitir seu frontend acessar a API
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tickets-frontend-kvf1.onrender.com';
-app.use(cors({
-    origin: FRONTEND_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
-
+app.use(cors());
 app.use(express.json());
 
-// → rotas públicas de auth (login/register/logout-all)
+// → rotas públicas de auth (login/register)
 app.use('/api/auth', authRouter);
 
 // → aplica autenticação em todas as rotas abaixo

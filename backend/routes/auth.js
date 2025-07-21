@@ -1,77 +1,42 @@
 // backend/routes/auth.js
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { query } = require('../db');
-const { authenticate, authorizeSector } = require('../middleware/auth');
 
 const router = express.Router();
-
-// Use uma chave secreta, com fallback para desenvolvimento
 const SECRET = process.env.JWT_SECRET || 'MY_SECRET';
 
-// REGISTER
 router.post('/register', async (req, res) => {
-  const { username, sector, password } = req.body;
-  if (!username || !sector || !password) return res.sendStatus(400);
-  try {
-    const hash = bcrypt.hashSync(password, 8);
-    await query(
-      'INSERT INTO users(username, sector, password) VALUES($1, $2, $3)',
-      [username, sector, hash]
-    );
-    res.sendStatus(201);
-  } catch (err) {
-    console.error('Erro ao registrar usuário:', err);
-    res.status(500).json({ message: 'Erro interno no servidor' });
-  }
+  const { username, password, sector } = req.body;
+  if (!username || !password || !sector)
+    return res.status(400).json({ message: 'Dados incompletos' });
+
+  const { rowCount } = await query('SELECT 1 FROM users WHERE username=$1', [username]);
+  if (rowCount > 0)
+    return res.status(400).json({ message: 'Usuário já existe' });
+
+  const hash = bcrypt.hashSync(password, 8);
+  await query('INSERT INTO users(username,password,sector) VALUES($1,$2,$3)', [
+    username, hash, sector
+  ]);
+
+  res.status(201).json({ message: 'Usuário criado com sucesso' });
 });
 
-// LOGIN
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  try {
-    const { rows } = await query(
-      'SELECT username, password, sector FROM users WHERE username = $1',
-      [username]
-    );
-    if (rows.length === 0) {
-      return res.status(400).json({ message: 'Usuário não existe' });
-    }
-    const user = rows[0];
-    if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(400).json({ message: 'Senha incorreta' });
-    }
-    const token = jwt.sign(
-      { username: user.username, sector: user.sector },
-      SECRET,
-      { expiresIn: '8h' }
-    );
-    res.json({ token });
-  } catch (err) {
-    console.error('Erro ao fazer login:', err);
-    res.status(500).json({ message: 'Erro interno no servidor' });
+  const { rows } = await query('SELECT password, sector FROM users WHERE username=$1', [username]);
+  if (rows.length === 0 || !bcrypt.compareSync(password, rows[0].password)) {
+    return res.status(401).json({ message: 'Credenciais inválidas' });
   }
-});
 
-// LOGOUT-ALL (força logout de todos os tokens emitidos até agora)
-router.post(
-  '/logout-all',
-  authenticate,
-  authorizeSector('DEV'),
-  async (req, res) => {
-    // só Marciel pode disparar
-    if (req.user.username !== 'Marciel') {
-      return res.sendStatus(403);
-    }
-    try {
-      await query('UPDATE users SET logout_all_at = NOW()', []);
-      res.json({ message: 'Todos os usuários foram desconectados.' });
-    } catch (err) {
-      console.error('Erro ao forçar logout-all:', err);
-      res.status(500).json({ message: 'Erro interno no servidor' });
-    }
-  }
-);
+  const token = jwt.sign(
+    { username, sector: rows[0].sector },
+    SECRET,
+    { expiresIn: '24h' }
+  );
+  res.json({ token });
+});
 
 module.exports = router;
