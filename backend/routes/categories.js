@@ -6,26 +6,28 @@ const { query } = require('../db');
 const router = express.Router();
 const types = ['lojas', 'contatos', 'ocorrencias'];
 
-// Antes era authorizeSector('DEV')
-// Agora SAF tem acesso (e DEV continua master)
+// Autorização: DEV e SAF podem mexer em categorias
 router.use(authorizeSector('SAF'));
 
-// GET todas (por padrão, somente contatos ativos)
+// GET /api/categories
+// Retorna um objeto com 3 arrays: lojas (strings), contatos ({ value, active }), ocorrencias (strings)
 router.get('/', async (req, res) => {
     try {
         const result = {};
-        for (let t of types) {
-            let sql;
-            if (t === 'contatos') {
-                // só traz contatos com flag active
-                sql = 'SELECT value, active FROM contatos ORDER BY value';
+        for (let type of types) {
+            if (type === 'contatos') {
+                const r = await query(
+                    'SELECT value, active FROM contatos ORDER BY value',
+                    []
+                );
+                result[type] = r.rows;
             } else {
-                sql = `SELECT value FROM ${t} ORDER BY value`;
+                const r = await query(
+                    `SELECT value FROM ${type} ORDER BY value`,
+                    []
+                );
+                result[type] = r.rows.map(row => row.value);
             }
-            const r = await query(sql, []);
-            result[t] = (t === 'contatos')
-                ? r.rows
-                : r.rows.map(row => row.value);
         }
         res.json(result);
     } catch (err) {
@@ -34,19 +36,18 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST – inserir nova categoria
+// POST   /api/categories/:type       → cria novo valor
+// PUT    /api/categories/:type       → renomeia (body: { old, value })
+// PUT    /api/categories/contatos/:value/inativar
+// DELETE /api/categories/:type/:value
 router.post('/:type', async (req, res) => {
     const { type } = req.params;
     const { value } = req.body;
     if (!types.includes(type)) return res.sendStatus(400);
-    await query(
-        `INSERT INTO ${type}(value) VALUES($1)`,
-        [value]
-    );
+    await query(`INSERT INTO ${type}(value) VALUES($1)`, [value]);
     res.sendStatus(201);
 });
 
-// PUT – renomear categoria
 router.put('/:type', async (req, res) => {
     const { type } = req.params;
     const { old, value } = req.body;
@@ -58,10 +59,8 @@ router.put('/:type', async (req, res) => {
     res.json({ value });
 });
 
-// PUT – inativar contato
 router.put('/:type/:value/inativar', async (req, res) => {
     const { type, value } = req.params;
-    // só aplicável a contatos
     if (type !== 'contatos') return res.sendStatus(400);
     await query(
         `UPDATE contatos SET active = FALSE WHERE value = $1`,
@@ -70,7 +69,6 @@ router.put('/:type/:value/inativar', async (req, res) => {
     res.json({ value });
 });
 
-// DELETE – remove completamente
 router.delete('/:type/:value', async (req, res) => {
     const { type, value } = req.params;
     if (!types.includes(type)) return res.sendStatus(400);
