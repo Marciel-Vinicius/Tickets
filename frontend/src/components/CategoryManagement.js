@@ -20,84 +20,93 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
 export default function CategoryManagement({ token }) {
+    // os três tipos de categoria
+    const types = ['lojas', 'contatos', 'ocorrencias'];
     const [tab, setTab] = useState('lojas');
     const [data, setData] = useState([]);
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
+    // 1. Busca categorias do backend
     const fetchData = async () => {
         try {
             const res = await fetch(`${API_URL}/api/categories`, {
-                headers: { Authorization: 'Bearer ' + token }
+                headers: { Authorization: `Bearer ${token}` }
             });
-            if (!res.ok) throw new Error(res.status);
+            if (!res.ok) throw new Error(`Status ${res.status}`);
             const obj = await res.json();
             setData(Array.isArray(obj[tab]) ? obj[tab] : []);
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao buscar categorias:', err);
             setData([]);
         }
     };
-    useEffect(fetchData, [tab]);
 
+    useEffect(fetchData, [tab, token]);
+
+    // 2. Criação ou edição de categoria
     const handleSave = async () => {
-        const isEdit = Boolean(current.old);
-        const url = `${API_URL}/api/categories/${tab}`;
-        const method = isEdit ? 'PUT' : 'POST';
-        const body = isEdit
-            ? { old: current.old, value: current.value }
-            : { value: current.value };
         try {
-            await fetch(url, {
+            const url = `${API_URL}/api/categories/${tab}`;
+            const method = current.old ? 'PUT' : 'POST';
+            const body = current.old
+                ? { old: current.old, value: current.value }
+                : { value: current.value };
+
+            const res = await fetch(url, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: 'Bearer ' + token
+                    Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify(body)
             });
+            if (!res.ok) throw new Error(`Status ${res.status}`);
             setOpen(false);
             setCurrent({ old: '', value: '' });
             fetchData();
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao salvar categoria:', err);
         }
     };
 
-    const handleInactivate = async value => {
+    // 3. Inativar contato
+    const handleInactivate = async (value) => {
         if (!window.confirm('Confirma inativar este contato?')) return;
         try {
-            await fetch(
-                `${API_URL}/api/categories/contatos/${encodeURIComponent(
-                    value
-                )}/inativar`,
+            const res = await fetch(
+                `${API_URL}/api/categories/contatos/${encodeURIComponent(value)}/inativar`,
                 {
                     method: 'PUT',
-                    headers: { Authorization: 'Bearer ' + token }
+                    headers: { Authorization: `Bearer ${token}` }
                 }
             );
+            if (!res.ok) throw new Error(`Status ${res.status}`);
             fetchData();
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao inativar contato:', err);
         }
     };
 
-    const handleDelete = async value => {
+    // 4. Excluir loja/ocorrência
+    const handleDelete = async (value) => {
         if (!window.confirm('Confirma exclusão?')) return;
         try {
-            await fetch(
+            const res = await fetch(
                 `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
                 {
                     method: 'DELETE',
-                    headers: { Authorization: 'Bearer ' + token }
+                    headers: { Authorization: `Bearer ${token}` }
                 }
             );
+            if (!res.ok) throw new Error(`Status ${res.status}`);
             fetchData();
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao deletar categoria:', err);
         }
     };
 
+    // 5. Abre diálogo de criar/editar
     const openModal = (mode, row) => {
         if (mode === 'edit') {
             setCurrent({ old: row.value, value: row.value });
@@ -107,34 +116,35 @@ export default function CategoryManagement({ token }) {
         setOpen(true);
     };
 
+    // 6. Definição das colunas, usando renderCell para ter controle total dos onClick
     const columns = [
         { field: 'value', headerName: 'Valor', flex: 1 },
         {
             field: 'actions',
             headerName: 'Ações',
             sortable: false,
-            width: 140,
-            renderCell: params => {
+            width: 120,
+            renderCell: (params) => {
                 const v = params.row.value;
                 return (
                     <>
                         <IconButton
-                            onClick={() => openModal('edit', params.row)}
                             size="small"
+                            onClick={() => openModal('edit', params.row)}
                         >
                             <EditIcon fontSize="small" />
                         </IconButton>
                         {tab === 'contatos' ? (
                             <IconButton
-                                onClick={() => handleInactivate(v)}
                                 size="small"
+                                onClick={() => handleInactivate(v)}
                             >
                                 <RemoveCircleOutlineIcon fontSize="small" />
                             </IconButton>
                         ) : (
                             <IconButton
-                                onClick={() => handleDelete(v)}
                                 size="small"
+                                onClick={() => handleDelete(v)}
                             >
                                 <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -145,17 +155,19 @@ export default function CategoryManagement({ token }) {
         }
     ];
 
-    const rows = data
-        .map(item => {
-            if (item && typeof item === 'object' && item.value != null) {
-                return { id: item.value, value: item.value, active: item.active };
-            }
-            if (typeof item === 'string' && item.trim() !== '') {
-                return { id: item, value: item };
-            }
-            return null;
-        })
-        .filter(Boolean);
+    // 7. Mapeia os dados garantindo sempre um `id` único
+    const rows = data.reduce((acc, item) => {
+        if (!item) return acc;
+        // contatos vêm como objeto { value, active }
+        if (typeof item === 'object' && item.value) {
+            acc.push({ id: item.value, value: item.value, active: item.active });
+        }
+        // lojas e ocorrências vêm como string
+        else if (typeof item === 'string' && item.trim()) {
+            acc.push({ id: item, value: item });
+        }
+        return acc;
+    }, []);
 
     return (
         <Box sx={{ height: 600, width: '100%' }}>
@@ -185,7 +197,7 @@ export default function CategoryManagement({ token }) {
             <DataGrid
                 rows={rows}
                 columns={columns}
-                getRowId={row => row.id}
+                getRowId={(row) => row.id}
                 pageSize={10}
                 rowsPerPageOptions={[10, 25, 50, 100]}
                 disableSelectionOnClick
@@ -198,14 +210,15 @@ export default function CategoryManagement({ token }) {
                 </DialogTitle>
                 <DialogContent>
                     <TextField
+                        autoFocus
                         margin="dense"
                         label="Valor"
                         type="text"
-                        value={current.value}
-                        onChange={e =>
-                            setCurrent(prev => ({ ...prev, value: e.target.value }))
-                        }
                         fullWidth
+                        value={current.value}
+                        onChange={(e) =>
+                            setCurrent((prev) => ({ ...prev, value: e.target.value }))
+                        }
                     />
                 </DialogContent>
                 <DialogActions>
