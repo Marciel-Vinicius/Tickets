@@ -2,9 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
-    Box, Typography, Tabs, Tab,
-    Button, Dialog, DialogTitle,
-    DialogContent, DialogActions,
+    Box,
+    Typography,
+    Tabs,
+    Tab,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     TextField
 } from '@mui/material';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
@@ -17,20 +23,30 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
-    // Busca dados das três listas
-    const fetchData = () => {
-        fetch(`${API_URL}/api/categories`, {
-            headers: { Authorization: 'Bearer ' + token }
-        })
-            .then(r => r.json())
-            .then(obj => setData(obj[tab] || []))
-            .catch(console.error);
+    // 1) Busca dados das três listas, sempre definindo um array
+    const fetchData = async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/categories`, {
+                headers: { Authorization: 'Bearer ' + token }
+            });
+            if (!res.ok) {
+                console.error('Erro ao buscar categorias:', res.status);
+                setData([]);
+                return;
+            }
+            const obj = await res.json();
+            const list = Array.isArray(obj[tab]) ? obj[tab] : [];
+            setData(list);
+        } catch (err) {
+            console.error(err);
+            setData([]);
+        }
     };
 
     useEffect(fetchData, [tab]);
 
-    // Cria ou renomeia
-    const handleSave = () => {
+    // 2) Cria ou renomeia
+    const handleSave = async () => {
         const isEdit = Boolean(current.old);
         const url = `${API_URL}/api/categories/${tab}`;
         const method = isEdit ? 'PUT' : 'POST';
@@ -38,39 +54,43 @@ export default function CategoryManagement({ token }) {
             ? { old: current.old, value: current.value }
             : { value: current.value };
 
-        fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + token
-            },
-            body: JSON.stringify(body)
-        })
-            .then(() => {
-                setOpen(false);
-                setCurrent({ old: '', value: '' });
-                fetchData();
-            })
-            .catch(console.error);
+        try {
+            await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + token
+                },
+                body: JSON.stringify(body)
+            });
+            setOpen(false);
+            setCurrent({ old: '', value: '' });
+            fetchData();
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    // Inativa apenas contatos
-    const handleInactivate = value => {
+    // 3) Inativa apenas contatos
+    const handleInactivate = async value => {
         if (!window.confirm('Confirma inativar este contato?')) return;
-        fetch(
-            `${API_URL}/api/categories/contatos/${encodeURIComponent(
-                value
-            )}/inativar`,
-            {
-                method: 'PUT',
-                headers: { Authorization: 'Bearer ' + token }
-            }
-        )
-            .then(fetchData)
-            .catch(console.error);
+        try {
+            await fetch(
+                `${API_URL}/api/categories/contatos/${encodeURIComponent(
+                    value
+                )}/inativar`,
+                {
+                    method: 'PUT',
+                    headers: { Authorization: 'Bearer ' + token }
+                }
+            );
+            fetchData();
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    // Abre modal de criação/edição
+    // 4) Abre modal de criar/editar
     const openModal = (mode, row) => {
         if (mode === 'edit') {
             setCurrent({ old: row.value, value: row.value });
@@ -80,13 +100,9 @@ export default function CategoryManagement({ token }) {
         setOpen(true);
     };
 
-    // Colunas do DataGrid
+    // 5) Colunas da grid
     const columns = [
-        {
-            field: 'value',
-            headerName: 'Valor',
-            flex: 1
-        },
+        { field: 'value', headerName: 'Valor', flex: 1 },
         {
             field: 'actions',
             type: 'actions',
@@ -122,9 +138,7 @@ export default function CategoryManagement({ token }) {
                             onClick={() => {
                                 if (window.confirm('Confirma exclusão?')) {
                                     fetch(
-                                        `${API_URL}/api/categories/${tab}/${encodeURIComponent(
-                                            v
-                                        )}`,
+                                        `${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`,
                                         {
                                             method: 'DELETE',
                                             headers: { Authorization: 'Bearer ' + token }
@@ -139,24 +153,27 @@ export default function CategoryManagement({ token }) {
         }
     ];
 
-    // Mapeia cada row garantindo um id único
-    const rows = Array.isArray(data)
-        ? data.map(item => {
-            if (typeof item === 'object') {
-                // contatos vêm como { value, active }
+    // 6) Mapeia e filtra, garantindo id único em cada row
+    const rows = data
+        .map(item => {
+            // contatos vêm como objeto { value, active }
+            if (item && typeof item === 'object' && item.value != null) {
                 return { id: item.value, value: item.value, active: item.active };
-            } else {
-                // lojas e ocorrências vêm como string
+            }
+            // lojas e ocorrências vêm como string
+            if (typeof item === 'string' && item.trim() !== '') {
                 return { id: item, value: item };
             }
+            return null;
         })
-        : [];
+        .filter(Boolean);
 
     return (
         <Box sx={{ height: 600, width: '100%' }}>
             <Typography variant="h5" gutterBottom>
                 Gerenciar Categorias
             </Typography>
+
             <Tabs
                 value={tab}
                 onChange={(_, v) => setTab(v)}
@@ -167,6 +184,7 @@ export default function CategoryManagement({ token }) {
                 <Tab label="CONTATOS" value="contatos" />
                 <Tab label="OCORRÊNCIAS" value="ocorrencias" />
             </Tabs>
+
             <Button
                 variant="contained"
                 sx={{ my: 2 }}
@@ -174,9 +192,11 @@ export default function CategoryManagement({ token }) {
             >
                 Adicionar
             </Button>
+
             <DataGrid
                 rows={rows}
                 columns={columns}
+                getRowId={row => row.id}
                 pageSize={10}
                 rowsPerPageOptions={[10, 25, 50, 100]}
                 disableSelectionOnClick
