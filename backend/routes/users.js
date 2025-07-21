@@ -11,14 +11,14 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorizeSector('DEV'));
 
-// Listar usuários + contagem de sábados
+// Listar usuários + contagem de sábados (conta datas distintas)
 router.get('/', async (req, res) => {
     const sql = `
     SELECT
       u.username,
       u.sector,
       COALESCE(
-        COUNT(a.*) FILTER (
+        COUNT(DISTINCT a.dia) FILTER (
           WHERE EXTRACT(DOW FROM a.dia) = 6
         ),
         0
@@ -29,46 +29,70 @@ router.get('/', async (req, res) => {
     GROUP BY u.username, u.sector
     ORDER BY u.username
   `;
-    const { rows } = await query(sql, []);
-    res.json(rows);
+    try {
+        const { rows } = await query(sql, []);
+        res.json(rows);
+    } catch (err) {
+        console.error('Erro ao listar usuários:', err);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
 });
 
 // Criar usuário
 router.post('/', async (req, res) => {
     const { username, sector, password } = req.body;
-    if (!username || !sector || !password) return res.sendStatus(400);
-    const hash = bcrypt.hashSync(password, 8);
-    await query(
-        'INSERT INTO users(username, sector, password) VALUES($1, $2, $3)',
-        [username, sector, hash]
-    );
-    res.sendStatus(201);
+    if (!username || !sector || !password) {
+        return res.status(400).json({ error: 'username, sector e password são obrigatórios' });
+    }
+    try {
+        const hash = bcrypt.hashSync(password, 8);
+        await query(
+            'INSERT INTO users(username, sector, password) VALUES($1, $2, $3)',
+            [username, sector, hash]
+        );
+        res.sendStatus(201);
+    } catch (err) {
+        console.error('Erro ao criar usuário:', err);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
 });
 
 // Atualizar setor e/ou senha
 router.put('/:username', async (req, res) => {
     const { username } = req.params;
     const { sector, password } = req.body;
-    if (sector) {
-        await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
+    try {
+        if (sector) {
+            await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
+        }
+        if (password) {
+            const hash = bcrypt.hashSync(password, 8);
+            await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
+        }
+        const { rows } = await query(
+            'SELECT username, sector FROM users WHERE username=$1',
+            [username]
+        );
+        if (rows.length === 0) {
+            return res.sendStatus(404);
+        }
+        res.json(rows[0]);
+    } catch (err) {
+        console.error('Erro ao atualizar usuário:', err);
+        res.status(500).json({ error: 'Erro interno no servidor' });
     }
-    if (password) {
-        const hash = bcrypt.hashSync(password, 8);
-        await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
-    }
-    const { rows } = await query(
-        'SELECT username, sector FROM users WHERE username=$1',
-        [username]
-    );
-    if (rows.length === 0) return res.sendStatus(404);
-    res.json(rows[0]);
 });
 
 // Apagar usuário
 router.delete('/:username', async (req, res) => {
     const { username } = req.params;
-    await query('DELETE FROM users WHERE username=$1', [username]);
-    res.sendStatus(204);
+    try {
+        await query('DELETE FROM users WHERE username=$1', [username]);
+        res.sendStatus(204);
+    } catch (err) {
+        console.error('Erro ao apagar usuário:', err);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
 });
 
 module.exports = router;

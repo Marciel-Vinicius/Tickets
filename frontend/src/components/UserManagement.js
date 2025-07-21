@@ -32,13 +32,16 @@ export default function UserManagement({ token }) {
             .then(setUsers)
             .catch(console.error);
     };
+
     useEffect(fetchUsers, []);
 
     const handleEdit = u => {
         setCurrent({ username: u.username, sector: u.sector, password: '' });
         setOpen(true);
     };
+
     const handleClose = () => setOpen(false);
+
     const handleSave = () => {
         fetch(`${API_URL}/api/users/${current.username}`, {
             method: 'PUT',
@@ -68,10 +71,8 @@ export default function UserManagement({ token }) {
                 <span>
                     {params.value}{' '}
                     <em>
-                        (
-                        {params.row.saturday_count}{' '}
-                        {params.row.saturday_count === 1 ? 'sábado' : 'sábados'}
-                        )
+                        ({params.row.saturday_count}{' '}
+                        {params.row.saturday_count === 1 ? 'sábado' : 'sábados'})
                     </em>
                 </span>
             )
@@ -119,9 +120,7 @@ export default function UserManagement({ token }) {
                         <Select
                             value={current.sector}
                             label="Setor"
-                            onChange={e =>
-                                setCurrent(p => ({ ...p, sector: e.target.value }))
-                            }
+                            onChange={e => setCurrent(p => ({ ...p, sector: e.target.value }))}
                         >
                             <MenuItem value="DEV">DEV</MenuItem>
                             <MenuItem value="TI">TI</MenuItem>
@@ -132,9 +131,7 @@ export default function UserManagement({ token }) {
                         label="Nova senha"
                         type="password"
                         value={current.password}
-                        onChange={e =>
-                            setCurrent(p => ({ ...p, password: e.target.value }))
-                        }
+                        onChange={e => setCurrent(p => ({ ...p, password: e.target.value }))}
                         fullWidth
                     />
                 </DialogContent>
