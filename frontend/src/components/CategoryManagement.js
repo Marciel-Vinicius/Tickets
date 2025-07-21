@@ -5,7 +5,7 @@ import {
     Box, Typography, Tabs, Tab,
     Button, Dialog, DialogTitle,
     DialogContent, DialogActions,
-    TextField, IconButton
+    TextField
 } from '@mui/material';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
@@ -17,24 +17,22 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
-    // busca as três listas: lojas, contatos e ocorrências
+    // Busca dados das três listas
     const fetchData = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
         })
             .then(r => r.json())
-            .then(obj => setData(obj[tab]))
+            .then(obj => setData(obj[tab] || []))
             .catch(console.error);
     };
 
     useEffect(fetchData, [tab]);
 
-    // criar / renomear
+    // Cria ou renomeia
     const handleSave = () => {
         const isEdit = Boolean(current.old);
-        const url = isEdit
-            ? `${API_URL}/api/categories/${tab}`
-            : `${API_URL}/api/categories/${tab}`;
+        const url = `${API_URL}/api/categories/${tab}`;
         const method = isEdit ? 'PUT' : 'POST';
         const body = isEdit
             ? { old: current.old, value: current.value }
@@ -56,11 +54,13 @@ export default function CategoryManagement({ token }) {
             .catch(console.error);
     };
 
-    // inativar apenas para contatos
-    const handleInactivate = v => {
+    // Inativa apenas contatos
+    const handleInactivate = value => {
         if (!window.confirm('Confirma inativar este contato?')) return;
         fetch(
-            `${API_URL}/api/categories/contatos/${encodeURIComponent(v)}/inativar`,
+            `${API_URL}/api/categories/contatos/${encodeURIComponent(
+                value
+            )}/inativar`,
             {
                 method: 'PUT',
                 headers: { Authorization: 'Bearer ' + token }
@@ -70,7 +70,7 @@ export default function CategoryManagement({ token }) {
             .catch(console.error);
     };
 
-    // abrir modal de editar/criar
+    // Abre modal de criação/edição
     const openModal = (mode, row) => {
         if (mode === 'edit') {
             setCurrent({ old: row.value, value: row.value });
@@ -80,64 +80,80 @@ export default function CategoryManagement({ token }) {
         setOpen(true);
     };
 
-    // colunas da grid
+    // Colunas do DataGrid
     const columns = [
         {
             field: 'value',
             headerName: 'Valor',
-            flex: 1,
+            flex: 1
         },
         {
             field: 'actions',
             type: 'actions',
             headerName: 'Ações',
-            getActions: params => [
-                <GridActionsCellItem
-                    icon={<EditIcon />}
-                    label="Editar"
-                    onClick={() => openModal('edit', params.row)}
-                />,
-                tab === 'contatos'
-                    ? <GridActionsCellItem
-                        icon={<Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => handleInactivate(params.row.value)}
-                        >
-                            Inativar
-                        </Button>}
-                        label="Inativar"
-                    />
-                    : <GridActionsCellItem
-                        icon={<DeleteIcon />}
-                        label="Deletar"
-                        onClick={() => {
-                            if (window.confirm('Confirma exclusão?')) {
-                                fetch(
-                                    `${API_URL}/api/categories/${tab}/${encodeURIComponent(params.row.value)}`,
-                                    {
-                                        method: 'DELETE',
-                                        headers: { Authorization: 'Bearer ' + token }
-                                    }
-                                ).then(fetchData);
+            getActions: params => {
+                const v = params.row.value;
+                return [
+                    <GridActionsCellItem
+                        key="edit"
+                        icon={<EditIcon />}
+                        label="Editar"
+                        onClick={() => openModal('edit', params.row)}
+                    />,
+                    tab === 'contatos' ? (
+                        <GridActionsCellItem
+                            key="inactivate"
+                            icon={
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => handleInactivate(v)}
+                                >
+                                    Inativar
+                                </Button>
                             }
-                        }}
-                    />
-            ]
+                            label="Inativar"
+                        />
+                    ) : (
+                        <GridActionsCellItem
+                            key="delete"
+                            icon={<DeleteIcon />}
+                            label="Deletar"
+                            onClick={() => {
+                                if (window.confirm('Confirma exclusão?')) {
+                                    fetch(
+                                        `${API_URL}/api/categories/${tab}/${encodeURIComponent(
+                                            v
+                                        )}`,
+                                        {
+                                            method: 'DELETE',
+                                            headers: { Authorization: 'Bearer ' + token }
+                                        }
+                                    ).then(fetchData);
+                                }
+                            }}
+                        />
+                    )
+                ];
+            }
         }
     ];
 
-    // linhas para DataGrid
+    // Mapeia cada row garantindo um id único
     const rows = Array.isArray(data)
-        ? data.map(item => ({
-            id: item.value,
-            value: item.value,
-            active: item.active
-        }))
+        ? data.map(item => {
+            if (typeof item === 'object') {
+                // contatos vêm como { value, active }
+                return { id: item.value, value: item.value, active: item.active };
+            } else {
+                // lojas e ocorrências vêm como string
+                return { id: item, value: item };
+            }
+        })
         : [];
 
     return (
-        <Box sx={{ height: 500, width: '100%' }}>
+        <Box sx={{ height: 600, width: '100%' }}>
             <Typography variant="h5" gutterBottom>
                 Gerenciar Categorias
             </Typography>
