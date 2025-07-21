@@ -12,26 +12,29 @@ router.use(authorizeSector('SAF'));
 
 // GET todas (por padrão, somente contatos ativos)
 router.get('/', async (req, res) => {
-    const result = {};
-    for (let t of types) {
-        if (t === 'contatos') {
-            const { rows } = await query(
-                'SELECT * FROM contatos WHERE active = true ORDER BY value',
-                []
-            );
-            result[t] = rows;
-        } else {
-            const { rows } = await query(
-                `SELECT * FROM ${t} ORDER BY value`,
-                []
-            );
-            result[t] = rows;
+    try {
+        const result = {};
+        for (let t of types) {
+            let sql;
+            if (t === 'contatos') {
+                // só traz contatos com flag active
+                sql = 'SELECT value, active FROM contatos ORDER BY value';
+            } else {
+                sql = `SELECT value FROM ${t} ORDER BY value`;
+            }
+            const r = await query(sql, []);
+            result[t] = (t === 'contatos')
+                ? r.rows
+                : r.rows.map(row => row.value);
         }
+        res.json(result);
+    } catch (err) {
+        console.error(err);
+        res.sendStatus(500);
     }
-    res.json(result);
 });
 
-// POST – criar um novo item de categoria
+// POST – inserir nova categoria
 router.post('/:type', async (req, res) => {
     const { type } = req.params;
     const { value } = req.body;
@@ -43,7 +46,7 @@ router.post('/:type', async (req, res) => {
     res.sendStatus(201);
 });
 
-// PUT – renomear
+// PUT – renomear categoria
 router.put('/:type', async (req, res) => {
     const { type } = req.params;
     const { old, value } = req.body;
@@ -55,7 +58,19 @@ router.put('/:type', async (req, res) => {
     res.json({ value });
 });
 
-// DELETE
+// PUT – inativar contato
+router.put('/:type/:value/inativar', async (req, res) => {
+    const { type, value } = req.params;
+    // só aplicável a contatos
+    if (type !== 'contatos') return res.sendStatus(400);
+    await query(
+        `UPDATE contatos SET active = FALSE WHERE value = $1`,
+        [value]
+    );
+    res.json({ value });
+});
+
+// DELETE – remove completamente
 router.delete('/:type/:value', async (req, res) => {
     const { type, value } = req.params;
     if (!types.includes(type)) return res.sendStatus(400);

@@ -7,7 +7,7 @@ import {
     DialogContent, DialogActions,
     TextField, IconButton
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -15,8 +15,9 @@ export default function CategoryManagement({ token }) {
     const [tab, setTab] = useState('lojas');
     const [data, setData] = useState([]);
     const [open, setOpen] = useState(false);
-    const [current, setCurrent] = useState({ oldValue: '', value: '' });
+    const [current, setCurrent] = useState({ old: '', value: '' });
 
+    // busca as três listas: lojas, contatos e ocorrências
     const fetchData = () => {
         fetch(`${API_URL}/api/categories`, {
             headers: { Authorization: 'Bearer ' + token }
@@ -28,25 +29,34 @@ export default function CategoryManagement({ token }) {
 
     useEffect(fetchData, [tab]);
 
-    const handleChangeTab = (_, newVal) => setTab(newVal);
-    const handleAdd = () => {
-        setCurrent({ oldValue: '', value: '' });
-        setOpen(true);
+    // criar / renomear
+    const handleSave = () => {
+        const isEdit = Boolean(current.old);
+        const url = isEdit
+            ? `${API_URL}/api/categories/${tab}`
+            : `${API_URL}/api/categories/${tab}`;
+        const method = isEdit ? 'PUT' : 'POST';
+        const body = isEdit
+            ? { old: current.old, value: current.value }
+            : { value: current.value };
+
+        fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
+            body: JSON.stringify(body)
+        })
+            .then(() => {
+                setOpen(false);
+                setCurrent({ old: '', value: '' });
+                fetchData();
+            })
+            .catch(console.error);
     };
-    const handleEdit = v => {
-        setCurrent({ oldValue: v, value: v });
-        setOpen(true);
-    };
-    const handleDelete = v => {
-        if (!window.confirm('Confirma exclusão?')) return;
-        fetch(
-            `${API_URL}/api/categories/${tab}/${encodeURIComponent(v)}`,
-            {
-                method: 'DELETE',
-                headers: { Authorization: 'Bearer ' + token }
-            }
-        ).then(fetchData);
-    };
+
+    // inativar apenas para contatos
     const handleInactivate = v => {
         if (!window.confirm('Confirma inativar este contato?')) return;
         fetch(
@@ -60,92 +70,112 @@ export default function CategoryManagement({ token }) {
             .catch(console.error);
     };
 
-    const handleSave = () => {
-        const isEdit = Boolean(current.oldValue);
-        const url = isEdit
-            ? `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.oldValue)}`
-            : `${API_URL}/api/categories/${tab}`;
-        const method = isEdit ? 'PUT' : 'POST';
-        fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + token
-            },
-            body: JSON.stringify({ value: current.value })
-        }).then(() => {
-            setOpen(false);
-            fetchData();
-        });
+    // abrir modal de editar/criar
+    const openModal = (mode, row) => {
+        if (mode === 'edit') {
+            setCurrent({ old: row.value, value: row.value });
+        } else {
+            setCurrent({ old: '', value: '' });
+        }
+        setOpen(true);
     };
 
+    // colunas da grid
     const columns = [
-        { field: 'value', headerName: 'Valor', flex: 1 },
+        {
+            field: 'value',
+            headerName: 'Valor',
+            flex: 1,
+        },
         {
             field: 'actions',
+            type: 'actions',
             headerName: 'Ações',
-            flex: tab === 'contatos' ? 1 : 0.5,
-            sortable: false,
-            renderCell: params => (
-                <>
-                    <IconButton onClick={() => handleEdit(params.row.value)}>
-                        <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(params.row.value)}>
-                        <DeleteIcon color="error" />
-                    </IconButton>
-                    {tab === 'contatos' && (
-                        <Button
+            getActions: params => [
+                <GridActionsCellItem
+                    icon={<EditIcon />}
+                    label="Editar"
+                    onClick={() => openModal('edit', params.row)}
+                />,
+                tab === 'contatos'
+                    ? <GridActionsCellItem
+                        icon={<Button
                             variant="outlined"
                             size="small"
                             onClick={() => handleInactivate(params.row.value)}
-                            sx={{ ml: 1 }}
                         >
                             Inativar
-                        </Button>
-                    )}
-                </>
-            )
+                        </Button>}
+                        label="Inativar"
+                    />
+                    : <GridActionsCellItem
+                        icon={<DeleteIcon />}
+                        label="Deletar"
+                        onClick={() => {
+                            if (window.confirm('Confirma exclusão?')) {
+                                fetch(
+                                    `${API_URL}/api/categories/${tab}/${encodeURIComponent(params.row.value)}`,
+                                    {
+                                        method: 'DELETE',
+                                        headers: { Authorization: 'Bearer ' + token }
+                                    }
+                                ).then(fetchData);
+                            }
+                        }}
+                    />
+            ]
         }
     ];
 
+    // linhas para DataGrid
+    const rows = Array.isArray(data)
+        ? data.map(item => ({
+            id: item.value,
+            value: item.value,
+            active: item.active
+        }))
+        : [];
+
     return (
-        <Box>
+        <Box sx={{ height: 500, width: '100%' }}>
             <Typography variant="h5" gutterBottom>
                 Gerenciar Categorias
             </Typography>
-            <Tabs value={tab} onChange={handleChangeTab}>
-                <Tab label="Lojas" value="lojas" />
-                <Tab label="Contatos" value="contatos" />
-                <Tab label="Ocorrências" value="ocorrencias" />
+            <Tabs
+                value={tab}
+                onChange={(_, v) => setTab(v)}
+                textColor="inherit"
+                indicatorColor="primary"
+            >
+                <Tab label="LOJAS" value="lojas" />
+                <Tab label="CONTATOS" value="contatos" />
+                <Tab label="OCORRÊNCIAS" value="ocorrencias" />
             </Tabs>
-
-            <Box sx={{ mt: 2, mb: 2 }}>
-                <Button variant="contained" onClick={handleAdd}>
-                    Adicionar
-                </Button>
-            </Box>
-
-            <div style={{ height: 400, width: '100%' }}>
-                <DataGrid
-                    rows={data.map(v => ({
-                        // assume v is { value: string, active?: boolean }
-                        id: v.value,
-                        value: v.value
-                    }))}
-                    columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5]}
-                />
-            </div>
+            <Button
+                variant="contained"
+                sx={{ my: 2 }}
+                onClick={() => openModal('add', null)}
+            >
+                Adicionar
+            </Button>
+            <DataGrid
+                rows={rows}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                disableSelectionOnClick
+                autoHeight
+            />
 
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>
-                    {current.oldValue ? 'Editar' : 'Adicionar'} {tab}
+                    {current.old ? 'Editar valor' : 'Novo valor'}
                 </DialogTitle>
-                <DialogContent sx={{ mt: 1 }}>
+                <DialogContent>
                     <TextField
+                        margin="dense"
                         label="Valor"
+                        type="text"
                         value={current.value}
                         onChange={e =>
                             setCurrent(p => ({ ...p, value: e.target.value }))
