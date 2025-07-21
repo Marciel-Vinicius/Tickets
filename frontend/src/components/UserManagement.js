@@ -1,4 +1,3 @@
-// frontend/src/components/UserManagement.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
@@ -22,7 +21,12 @@ import EditIcon from '@mui/icons-material/Edit';
 export default function UserManagement({ token }) {
     const [users, setUsers] = useState([]);
     const [open, setOpen] = useState(false);
-    const [current, setCurrent] = useState({ username: '', sector: '', password: '' });
+    const [current, setCurrent] = useState({
+        username: '',
+        sector: '',
+        password: '',
+        initial_saturdays: 0
+    });
 
     const fetchUsers = () => {
         fetch(`${API_URL}/api/users`, {
@@ -32,14 +36,17 @@ export default function UserManagement({ token }) {
             .then(setUsers)
             .catch(console.error);
     };
-
     useEffect(fetchUsers, []);
 
     const handleEdit = u => {
-        setCurrent({ username: u.username, sector: u.sector, password: '' });
+        setCurrent({
+            username: u.username,
+            sector: u.sector,
+            password: '',
+            initial_saturdays: u.initial_saturdays
+        });
         setOpen(true);
     };
-
     const handleClose = () => setOpen(false);
 
     const handleSave = () => {
@@ -51,7 +58,8 @@ export default function UserManagement({ token }) {
             },
             body: JSON.stringify({
                 sector: current.sector,
-                password: current.password || undefined
+                password: current.password || undefined,
+                initial_saturdays: Number(current.initial_saturdays)
             })
         })
             .then(r => (r.ok ? r.json() : Promise.reject()))
@@ -120,7 +128,9 @@ export default function UserManagement({ token }) {
                         <Select
                             value={current.sector}
                             label="Setor"
-                            onChange={e => setCurrent(p => ({ ...p, sector: e.target.value }))}
+                            onChange={e =>
+                                setCurrent(p => ({ ...p, sector: e.target.value }))
+                            }
                         >
                             <MenuItem value="DEV">DEV</MenuItem>
                             <MenuItem value="TI">TI</MenuItem>
@@ -131,7 +141,22 @@ export default function UserManagement({ token }) {
                         label="Nova senha"
                         type="password"
                         value={current.password}
-                        onChange={e => setCurrent(p => ({ ...p, password: e.target.value }))}
+                        onChange={e =>
+                            setCurrent(p => ({ ...p, password: e.target.value }))
+                        }
+                        fullWidth
+                    />
+                    <TextField
+                        label="Sábados iniciais"
+                        type="number"
+                        value={current.initial_saturdays}
+                        onChange={e =>
+                            setCurrent(p => ({
+                                ...p,
+                                initial_saturdays: e.target.value
+                            }))
+                        }
+                        helperText="Ajuste manual de sábados anteriores"
                         fullWidth
                     />
                 </DialogContent>

@@ -11,22 +11,23 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorizeSector('DEV'));
 
-// Listar usuários + contagem de sábados (conta datas distintas)
+// Listar usuários + cálculo de sábados (contagem distinta + override)
 router.get('/', async (req, res) => {
     const sql = `
     SELECT
       u.username,
       u.sector,
+      u.initial_saturdays,
       COALESCE(
         COUNT(DISTINCT a.dia) FILTER (
           WHERE EXTRACT(DOW FROM a.dia) = 6
         ),
         0
-      ) AS saturday_count
+      ) + u.initial_saturdays AS saturday_count
     FROM users u
     LEFT JOIN atendimentos a
       ON a.atendente = u.username
-    GROUP BY u.username, u.sector
+    GROUP BY u.username, u.sector, u.initial_saturdays
     ORDER BY u.username
   `;
     try {
@@ -38,7 +39,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Criar usuário
+// Criar usuário (initial_saturdays padrão 0 via migração)
 router.post('/', async (req, res) => {
     const { username, sector, password } = req.body;
     if (!username || !sector || !password) {
@@ -57,10 +58,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Atualizar setor e/ou senha
+// Atualizar setor, senha e initial_saturdays
 router.put('/:username', async (req, res) => {
     const { username } = req.params;
-    const { sector, password } = req.body;
+    const { sector, password, initial_saturdays } = req.body;
     try {
         if (sector) {
             await query('UPDATE users SET sector=$1 WHERE username=$2', [sector, username]);
@@ -69,8 +70,15 @@ router.put('/:username', async (req, res) => {
             const hash = bcrypt.hashSync(password, 8);
             await query('UPDATE users SET password=$1 WHERE username=$2', [hash, username]);
         }
+        if (initial_saturdays !== undefined) {
+            const n = parseInt(initial_saturdays, 10) || 0;
+            await query(
+                'UPDATE users SET initial_saturdays=$1 WHERE username=$2',
+                [n, username]
+            );
+        }
         const { rows } = await query(
-            'SELECT username, sector FROM users WHERE username=$1',
+            'SELECT username, sector, initial_saturdays FROM users WHERE username=$1',
             [username]
         );
         if (rows.length === 0) {
