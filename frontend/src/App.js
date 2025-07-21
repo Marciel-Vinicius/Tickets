@@ -124,10 +124,22 @@ export default function App() {
     setMobileOpen(false);
   };
 
+  // força logout de todos os usuários (só Marciel)
+  const handleLogoutAll = () => {
+    fetch(`${API_URL}/api/auth/logout-all`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        alert('Todos foram desconectados. Eles precisarão fazer login novamente.');
+      })
+      .catch(() => alert('Erro ao desconectar todos.'));
+  };
+
   // agenda logout automático 1h após loginTime
   useEffect(() => {
     if (token) {
-      // pega loginTime de onde estiver
       const storedTime =
         localStorage.getItem('loginTime') || sessionStorage.getItem('loginTime') || '0';
       const loginTime = parseInt(storedTime, 10);
@@ -286,6 +298,11 @@ export default function App() {
             <IconButton color="inherit" onClick={toggleColorMode}>
               {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
             </IconButton>
+            {user?.username === 'Marciel' && (
+              <Button color="inherit" onClick={handleLogoutAll}>
+                Deslogar Todos
+              </Button>
+            )}
           </Toolbar>
         </AppBar>
 
