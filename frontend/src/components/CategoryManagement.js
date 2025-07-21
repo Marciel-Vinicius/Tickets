@@ -14,7 +14,7 @@ import {
     TextField,
     IconButton
 } from '@mui/material';
-import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
+import { DataGrid } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
@@ -25,24 +25,21 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
-    // Fetch das três listas
     const fetchData = async () => {
         try {
             const res = await fetch(`${API_URL}/api/categories`, {
                 headers: { Authorization: 'Bearer ' + token }
             });
-            if (!res.ok) throw new Error(`Status ${res.status}`);
+            if (!res.ok) throw new Error(res.status);
             const obj = await res.json();
             setData(Array.isArray(obj[tab]) ? obj[tab] : []);
         } catch (err) {
-            console.error('Erro ao buscar categorias:', err);
+            console.error(err);
             setData([]);
         }
     };
-
     useEffect(fetchData, [tab]);
 
-    // Criar / Renomear
     const handleSave = async () => {
         const isEdit = Boolean(current.old);
         const url = `${API_URL}/api/categories/${tab}`;
@@ -50,7 +47,6 @@ export default function CategoryManagement({ token }) {
         const body = isEdit
             ? { old: current.old, value: current.value }
             : { value: current.value };
-
         try {
             await fetch(url, {
                 method,
@@ -64,11 +60,10 @@ export default function CategoryManagement({ token }) {
             setCurrent({ old: '', value: '' });
             fetchData();
         } catch (err) {
-            console.error('Erro ao salvar categoria:', err);
+            console.error(err);
         }
     };
 
-    // Inativar contato
     const handleInactivate = async value => {
         if (!window.confirm('Confirma inativar este contato?')) return;
         try {
@@ -83,11 +78,10 @@ export default function CategoryManagement({ token }) {
             );
             fetchData();
         } catch (err) {
-            console.error('Erro ao inativar contato:', err);
+            console.error(err);
         }
     };
 
-    // Deletar loja/ocorrência
     const handleDelete = async value => {
         if (!window.confirm('Confirma exclusão?')) return;
         try {
@@ -100,11 +94,10 @@ export default function CategoryManagement({ token }) {
             );
             fetchData();
         } catch (err) {
-            console.error('Erro ao deletar item:', err);
+            console.error(err);
         }
     };
 
-    // Abre modal para criar/editar
     const openModal = (mode, row) => {
         if (mode === 'edit') {
             setCurrent({ old: row.value, value: row.value });
@@ -114,46 +107,44 @@ export default function CategoryManagement({ token }) {
         setOpen(true);
     };
 
-    // Definição das colunas
     const columns = [
         { field: 'value', headerName: 'Valor', flex: 1 },
         {
             field: 'actions',
-            type: 'actions',
             headerName: 'Ações',
-            getActions: params => {
+            sortable: false,
+            width: 140,
+            renderCell: params => {
                 const v = params.row.value;
-                return [
-                    <GridActionsCellItem
-                        key="edit"
-                        icon={<EditIcon />}
-                        label="Editar"
-                        onClick={() => openModal('edit', params.row)}
-                        showInMenu={false}
-                    />,
-                    tab === 'contatos' ? (
-                        <GridActionsCellItem
-                            key="inactivate"
-                            icon={<RemoveCircleOutlineIcon />}
-                            label="Inativar"
-                            onClick={() => handleInactivate(v)}
-                            showInMenu={false}
-                        />
-                    ) : (
-                        <GridActionsCellItem
-                            key="delete"
-                            icon={<DeleteIcon />}
-                            label="Deletar"
-                            onClick={() => handleDelete(v)}
-                            showInMenu={false}
-                        />
-                    )
-                ];
+                return (
+                    <>
+                        <IconButton
+                            onClick={() => openModal('edit', params.row)}
+                            size="small"
+                        >
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                        {tab === 'contatos' ? (
+                            <IconButton
+                                onClick={() => handleInactivate(v)}
+                                size="small"
+                            >
+                                <RemoveCircleOutlineIcon fontSize="small" />
+                            </IconButton>
+                        ) : (
+                            <IconButton
+                                onClick={() => handleDelete(v)}
+                                size="small"
+                            >
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        )}
+                    </>
+                );
             }
         }
     ];
 
-    // Mapeia e filtra linhas garantindo id único
     const rows = data
         .map(item => {
             if (item && typeof item === 'object' && item.value != null) {
