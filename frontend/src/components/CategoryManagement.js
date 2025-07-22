@@ -1,3 +1,4 @@
+// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
@@ -34,8 +35,8 @@ export default function CategoryManagement({ token }) {
             const obj = await res.json();
             const items = Array.isArray(obj[tab]) ? obj[tab] : [];
             const rows = items.map((item, idx) => ({
-                id: idx,               // índice garante número único
-                value: item.value,     // string
+                id: idx,
+                value: item.value,
                 ...(item.active !== undefined && { active: item.active }),
             }));
             setData(rows);
@@ -47,7 +48,6 @@ export default function CategoryManagement({ token }) {
 
     useEffect(fetchData, [tab]);
 
-    // Cria novo
     const handleAdd = async () => {
         try {
             await fetch(`${API_URL}/api/categories/${tab}`, {
@@ -65,7 +65,6 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // Edita (rename)
     const handleSave = async () => {
         try {
             await fetch(
@@ -86,7 +85,6 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // Exclui ou inativa
     const handleDelete = async (value) => {
         try {
             if (tab === 'contatos') {
@@ -94,12 +92,18 @@ export default function CategoryManagement({ token }) {
                     `${API_URL}/api/categories/contatos/${encodeURIComponent(
                         value
                     )}/inativar`,
-                    { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        method: 'PUT',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
                 );
             } else {
                 await fetch(
                     `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
-                    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
                 );
             }
             fetchData();
@@ -115,8 +119,8 @@ export default function CategoryManagement({ token }) {
             headerName: 'Ações',
             width: 120,
             sortable: false,
-            renderCell: params => (
-                <>
+            renderCell: (params) => (
+                <Box display="flex" gap={1}>
                     <IconButton
                         size="small"
                         onClick={() => {
@@ -132,7 +136,7 @@ export default function CategoryManagement({ token }) {
                     >
                         <DeleteIcon fontSize="small" />
                     </IconButton>
-                </>
+                </Box>
             ),
         },
     ];
@@ -147,7 +151,7 @@ export default function CategoryManagement({ token }) {
                 value={tab}
                 onChange={(_, v) => {
                     setTab(v);
-                    setData([]); // limpa antes de recarregar
+                    setData([]);
                 }}
             >
                 <Tab label="LOJAS" value="lojas" />
@@ -190,8 +194,8 @@ export default function CategoryManagement({ token }) {
                         fullWidth
                         autoComplete="off"
                         value={current.value}
-                        onChange={e =>
-                            setCurrent(c => ({ ...c, value: e.target.value }))
+                        onChange={(e) =>
+                            setCurrent((c) => ({ ...c, value: e.target.value }))
                         }
                     />
                 </DialogContent>
