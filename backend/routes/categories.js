@@ -43,27 +43,42 @@ router.post('/:type', async (req, res) => {
     res.sendStatus(201);
 });
 
-// PUT – renomear
-router.put('/:type', async (req, res) => {
-    const { type } = req.params;
-    const { old, value } = req.body;
+// PUT – editar item de categoria
+router.put('/:type/:oldValue', async (req, res) => {
+    const { type, oldValue } = req.params;
+    const { value } = req.body;
     if (!types.includes(type)) return res.sendStatus(400);
     await query(
-        `UPDATE ${type} SET value=$1 WHERE value=$2`,
-        [value, old]
+        `UPDATE ${type} SET value = $1 WHERE value = $2`,
+        [value, oldValue]
     );
-    res.json({ value });
+    res.sendStatus(200);
 });
 
-// DELETE
+// DELETE – deletar item de categoria
 router.delete('/:type/:value', async (req, res) => {
     const { type, value } = req.params;
     if (!types.includes(type)) return res.sendStatus(400);
     await query(
-        `DELETE FROM ${type} WHERE value=$1`,
+        `DELETE FROM ${type} WHERE value = $1`,
         [value]
     );
-    res.sendStatus(204);
+    res.sendStatus(200);
+});
+
+// PUT /api/categories/contatos/:id → inativar contato
+router.put('/contatos/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await query(
+            'UPDATE contatos SET active = false WHERE id = $1',
+            [id]
+        );
+        res.sendStatus(200);
+    } catch (err) {
+        console.error(err);
+        res.sendStatus(500);
+    }
 });
 
 module.exports = router;
