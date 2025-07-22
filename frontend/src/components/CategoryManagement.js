@@ -10,15 +10,16 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
+    DialogContentText,
     DialogActions,
     TextField,
-    IconButton,
     TableContainer,
     Table,
     TableHead,
     TableRow,
     TableCell,
     TableBody,
+    IconButton,
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -30,6 +31,8 @@ export default function CategoryManagement({ token }) {
     const [data, setData] = useState([])
     const [open, setOpen] = useState(false)
     const [current, setCurrent] = useState({ old: '', value: '' })
+    const [confirmOpen, setConfirmOpen] = useState(false)
+    const [confirmValue, setConfirmValue] = useState('')
 
     const fetchData = async () => {
         try {
@@ -73,7 +76,9 @@ export default function CategoryManagement({ token }) {
     const handleSave = async () => {
         try {
             await fetch(
-                `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.old)}`,
+                `${API_URL}/api/categories/${tab}/${encodeURIComponent(
+                    current.old
+                )}`,
                 {
                     method: 'PUT',
                     headers: {
@@ -93,7 +98,7 @@ export default function CategoryManagement({ token }) {
     const handleDeleteOrInactivate = async value => {
         try {
             if (tab === 'contatos') {
-                // inativar contato
+                // Inativar contato
                 await fetch(
                     `${API_URL}/api/categories/contatos/${encodeURIComponent(
                         value
@@ -104,7 +109,7 @@ export default function CategoryManagement({ token }) {
                     }
                 )
             } else {
-                // delete normal para lojas e ocorrências
+                // Excluir lojas ou ocorrências
                 await fetch(
                     `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
                     {
@@ -117,6 +122,16 @@ export default function CategoryManagement({ token }) {
         } catch (err) {
             console.error(err)
         }
+    }
+
+    const openConfirm = value => {
+        setConfirmValue(value)
+        setConfirmOpen(true)
+    }
+
+    const handleConfirm = () => {
+        handleDeleteOrInactivate(confirmValue)
+        setConfirmOpen(false)
     }
 
     return (
@@ -171,12 +186,16 @@ export default function CategoryManagement({ token }) {
                                     </IconButton>
 
                                     {tab === 'contatos' ? (
-                                        <IconButton
+                                        <Button
+                                            variant="outlined"
+                                            color="error"
                                             size="small"
-                                            onClick={() => handleDeleteOrInactivate(item.value)}
+                                            startIcon={<RemoveCircleOutlineIcon />}
+                                            onClick={() => openConfirm(item.value)}
+                                            sx={{ ml: 1 }}
                                         >
-                                            <RemoveCircleOutlineIcon fontSize="small" />
-                                        </IconButton>
+                                            Inativar
+                                        </Button>
                                     ) : (
                                         <IconButton
                                             size="small"
@@ -192,6 +211,7 @@ export default function CategoryManagement({ token }) {
                 </Table>
             </TableContainer>
 
+            {/* Dialog de Adicionar/Editar */}
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>
                     {current.old ? 'Editar' : 'Adicionar'}{' '}
@@ -212,6 +232,22 @@ export default function CategoryManagement({ token }) {
                     <Button onClick={() => setOpen(false)}>Cancelar</Button>
                     <Button onClick={current.old ? handleSave : handleAdd}>
                         Salvar
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog de Confirmação de Inativação */}
+            <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+                <DialogTitle>Confirmar Inativação</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Tem certeza que deseja inativar o contato "<strong>{confirmValue}</strong>"?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleConfirm} color="error">
+                        Inativar
                     </Button>
                 </DialogActions>
             </Dialog>
