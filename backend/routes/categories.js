@@ -1,4 +1,3 @@
-// backend/routes/categories.js
 const express = require('express');
 const { authorizeSector } = require('../middleware/auth');
 const { query } = require('../db');
@@ -6,8 +5,6 @@ const { query } = require('../db');
 const router = express.Router();
 const types = ['lojas', 'contatos', 'ocorrencias'];
 
-// Antes era authorizeSector('DEV')
-// Agora SAF tem acesso (e DEV continua master)
 router.use(authorizeSector('SAF'));
 
 // GET todas (por padrão, somente contatos ativos)
@@ -16,7 +13,7 @@ router.get('/', async (req, res) => {
     for (let t of types) {
         if (t === 'contatos') {
             const { rows } = await query(
-                'SELECT * FROM contatos WHERE active = true ORDER BY value',
+                'SELECT id, value FROM contatos WHERE active = true ORDER BY value',
                 []
             );
             result[t] = rows;

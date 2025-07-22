@@ -1,4 +1,3 @@
-// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
@@ -129,7 +128,7 @@ export default function CategoryManagement({ token }) {
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={data.map(v => ({
-                        id: v.id || v.value, // Corrigido para manter id real
+                        id: v.id || v.value,  // ← usa id real se existir
                         value: v.value
                     }))}
                     columns={columns}
