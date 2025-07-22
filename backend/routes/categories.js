@@ -6,27 +6,28 @@ const { query } = require('../db');
 const router = express.Router();
 const types = ['lojas', 'contatos', 'ocorrencias'];
 
-// Ajuste quem pode acessar (mantive 'SAF'; acrescente 'DEV' se precisar)
-router.use(authorizeSector('SAF'));
+router.use(authorizeSector('SAF')); // ou ajuste para DEV+SAF, como preferir
 
 // GET /api/categories
-// → { lojas: [...], contatos: [...], ocorrencias: [...] }
+// → sempre retorna arrays de objetos { value: string, [active: boolean] }
 router.get('/', async (req, res) => {
     try {
         const result = {};
-        for (let t of types) {
+        for (const t of types) {
             if (t === 'contatos') {
                 const { rows } = await query(
                     'SELECT value, active FROM contatos WHERE active = true ORDER BY value',
                     []
                 );
+                // [{ value, active }, …]
                 result[t] = rows;
             } else {
                 const { rows } = await query(
                     `SELECT value FROM ${t} ORDER BY value`,
                     []
                 );
-                result[t] = rows.map(r => r.value);
+                // converte para [{ value }, …]
+                result[t] = rows.map(r => ({ value: r.value }));
             }
         }
         res.json(result);
@@ -37,7 +38,6 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/categories/:type
-// → criar item em lojas, contatos ou ocorrencias
 router.post('/:type', async (req, res) => {
     const { type } = req.params;
     const { value } = req.body;
@@ -52,7 +52,6 @@ router.post('/:type', async (req, res) => {
 });
 
 // PUT /api/categories/:type/:oldValue
-// → renomear item (lojas, contatos e ocorrencias)
 router.put('/:type/:oldValue', async (req, res) => {
     const { type, oldValue } = req.params;
     const { value } = req.body;
@@ -70,7 +69,6 @@ router.put('/:type/:oldValue', async (req, res) => {
 });
 
 // PUT /api/categories/contatos/:value/inativar
-// → só para contatos: marca active = false
 router.put('/:type/:value/inativar', async (req, res) => {
     const { type, value } = req.params;
     if (type !== 'contatos') return res.sendStatus(400);
@@ -87,7 +85,6 @@ router.put('/:type/:value/inativar', async (req, res) => {
 });
 
 // DELETE /api/categories/:type/:value
-// → remove o item
 router.delete('/:type/:value', async (req, res) => {
     const { type, value } = req.params;
     if (!types.includes(type)) return res.sendStatus(400);
