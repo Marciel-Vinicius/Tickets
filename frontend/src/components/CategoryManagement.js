@@ -25,7 +25,7 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
-    // Busca e já mapeia cada item para ter um id único
+    // Busca categorias e mapeia cada item para ter id único
     const fetchData = async () => {
         try {
             const res = await fetch(`${API_URL}/api/categories`, {
@@ -33,15 +33,26 @@ export default function CategoryManagement({ token }) {
             });
             const obj = await res.json();
             const items = obj[tab] || [];
+
             const rows = items.map(item => {
+                // para contatos, item é objeto { value, active }
                 if (tab === 'contatos') {
-                    return { id: item.value, value: item.value, active: item.active };
+                    return {
+                        id: item.value,
+                        value: item.value,
+                        active: item.active,
+                    };
                 }
-                return { id: item, value: item };
+                // para lojas e ocorrencias, item é string
+                return {
+                    id: item,
+                    value: item,
+                };
             });
+
             setData(rows);
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao buscar categorias:', err);
         }
     };
 
@@ -61,7 +72,7 @@ export default function CategoryManagement({ token }) {
             setOpen(false);
             fetchData();
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao adicionar item:', err);
         }
     };
 
@@ -69,9 +80,7 @@ export default function CategoryManagement({ token }) {
     const handleSave = async () => {
         try {
             await fetch(
-                `${API_URL}/api/categories/${tab}/${encodeURIComponent(
-                    current.old
-                )}`,
+                `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.old)}`,
                 {
                     method: 'PUT',
                     headers: {
@@ -84,40 +93,47 @@ export default function CategoryManagement({ token }) {
             setOpen(false);
             fetchData();
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao salvar edição:', err);
         }
     };
 
-    // Deletar (ou, no caso de contatos, inativar)
+    // Excluir ou inativar
     const handleDelete = async value => {
         try {
             if (tab === 'contatos') {
-                // Inativa contato
+                // inativa contato
                 await fetch(
                     `${API_URL}/api/categories/contatos/${encodeURIComponent(
                         value
                     )}/inativar`,
-                    { method: 'PUT', headers: { Authorization: 'Bearer ' + token } }
+                    {
+                        method: 'PUT',
+                        headers: { Authorization: 'Bearer ' + token },
+                    }
                 );
             } else {
-                // Remove loja ou ocorrência
-                await fetch(
-                    `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
-                    { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
-                );
+                // deleta loja ou ocorrência
+                await fetch(`${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + token },
+                });
             }
             fetchData();
         } catch (err) {
-            console.error(err);
+            console.error('Erro ao excluir/inativar:', err);
         }
     };
 
     const columns = [
-        { field: 'value', headerName: 'Valor', flex: 1 },
+        {
+            field: 'value',
+            headerName: 'Valor',
+            flex: 1,
+        },
         {
             field: 'actions',
             headerName: 'Ações',
-            width: 140,
+            width: 120,
             sortable: false,
             renderCell: params => (
                 <>
@@ -146,6 +162,7 @@ export default function CategoryManagement({ token }) {
             <Typography variant="h5" gutterBottom>
                 Gerenciar Categorias
             </Typography>
+
             <Tabs
                 value={tab}
                 onChange={(_, v) => {
@@ -173,6 +190,7 @@ export default function CategoryManagement({ token }) {
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={data}
+                    // aqui garantimos que getRowId é uma função
                     getRowId={row => row.id}
                     columns={columns}
                     pageSize={10}
@@ -192,10 +210,9 @@ export default function CategoryManagement({ token }) {
                         margin="dense"
                         label="Valor"
                         fullWidth
+                        autoComplete="off"
                         value={current.value}
-                        onChange={e =>
-                            setCurrent(c => ({ ...c, value: e.target.value }))
-                        }
+                        onChange={e => setCurrent(c => ({ ...c, value: e.target.value }))}
                     />
                 </DialogContent>
                 <DialogActions>
