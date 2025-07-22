@@ -1,4 +1,3 @@
-// backend/db.js
 require('dotenv').config();
 const { Pool } = require('pg');
 
@@ -9,7 +8,8 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    // Desativa SSL para conexão local na VM
+    ssl: false
 });
 
 module.exports = {
