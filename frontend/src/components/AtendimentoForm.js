@@ -1,3 +1,4 @@
+// frontend/src/components/AtendimentoForm.js
 import React, { useState, useEffect } from 'react';
 import {
   Paper,
@@ -29,17 +30,29 @@ export default function AtendimentoForm({
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carrega categorias
+  // carrega categorias com tratamento de erro
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
-      .then(r => r.json())
-      .then(setOpts)
-      .catch(console.error);
+      .then(r => {
+        if (!r.ok) throw new Error(`Status ${r.status}`);
+        return r.json();
+      })
+      .then(data =>
+        setOpts({
+          lojas: Array.isArray(data.lojas) ? data.lojas : [],
+          contatos: Array.isArray(data.contatos) ? data.contatos : [],
+          ocorrencias: Array.isArray(data.ocorrencias) ? data.ocorrencias : []
+        })
+      )
+      .catch(err => {
+        console.error('Erro ao carregar categorias:', err);
+        setOpts({ lojas: [], contatos: [], ocorrencias: [] });
+      });
   }, [token]);
 
-  // preenche form ao editar, ou reseta componente
+  // preenche form ao editar, ou reseta campos
   useEffect(() => {
     if (editingAtendimento) {
       setForm({
@@ -96,11 +109,8 @@ export default function AtendimentoForm({
     })
       .then(r => {
         if (!r.ok) throw new Error();
-        if (isEdit) {
-          onUpdate && onUpdate();
-        } else {
-          onAdd && onAdd(); // <- garante atualização imediata após criação
-        }
+        if (isEdit) onUpdate && onUpdate();
+        else onAdd && onAdd();
         clearEditing();
         setForm(f => ({
           ...f,
@@ -180,7 +190,7 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.lojas.map(({ value }) => (
+          {(opts.lojas || []).map(({ value }) => (
             <MenuItem key={value} value={value}>
               {value}
             </MenuItem>
@@ -195,7 +205,7 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.contatos
+          {(opts.contatos || [])
             .filter(c => c.active)
             .map(({ value }) => (
               <MenuItem key={value} value={value}>
@@ -212,7 +222,7 @@ export default function AtendimentoForm({
           onChange={handleChange}
           sx={{ flex: '1 1 150px' }}
         >
-          {opts.ocorrencias.map(({ value }) => (
+          {(opts.ocorrencias || []).map(({ value }) => (
             <MenuItem key={value} value={value}>
               {value}
             </MenuItem>
