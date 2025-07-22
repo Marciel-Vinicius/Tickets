@@ -19,7 +19,6 @@ import {
     TableRow,
     TableCell,
     TableBody,
-    Paper
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -31,7 +30,6 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false)
     const [current, setCurrent] = useState({ old: '', value: '' })
 
-    // Busca e normaliza: sempre objetos { value, [active] }
     const fetchData = async () => {
         try {
             const res = await fetch(`${API_URL}/api/categories`, {
@@ -39,63 +37,78 @@ export default function CategoryManagement({ token }) {
             })
             const obj = await res.json()
             const items = Array.isArray(obj[tab]) ? obj[tab] : []
-            setData(items.map(item => ({
-                value: item.value,
-                active: item.active
-            })))
+            setData(
+                items.map(item => ({
+                    value: item.value,
+                    active: item.active,
+                }))
+            )
         } catch (err) {
-            console.error('Erro ao buscar categorias:', err)
-            setData([])
+            console.error(err)
         }
     }
 
-    useEffect(fetchData, [tab])
-
-    // Cria novo
-    const handleAdd = async () => {
-        await fetch(`${API_URL}/api/categories/${tab}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ value: current.value }),
-        })
-        setOpen(false)
+    // CORREÇÃO: envolver fetchData dentro de uma função para não retornar Promise
+    useEffect(() => {
         fetchData()
-    }
+    }, [tab])
 
-    // Renomeia
-    const handleSave = async () => {
-        await fetch(
-            `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.old)}`,
-            {
-                method: 'PUT',
+    const handleAdd = async () => {
+        try {
+            await fetch(`${API_URL}/api/categories/${tab}`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ value: current.value }),
-            }
-        )
-        setOpen(false)
-        fetchData()
+            })
+            setOpen(false)
+            fetchData()
+        } catch (err) {
+            console.error(err)
+        }
     }
 
-    // Deleta / inativa
-    const handleDelete = async value => {
-        if (tab === 'contatos') {
+    const handleSave = async () => {
+        try {
             await fetch(
-                `${API_URL}/api/categories/contatos/${encodeURIComponent(value)}/inativar`,
-                { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }
+                `${API_URL}/api/categories/${tab}/${encodeURIComponent(current.old)}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ value: current.value }),
+                }
             )
-        } else {
-            await fetch(
-                `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
-                { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
-            )
+            setOpen(false)
+            fetchData()
+        } catch (err) {
+            console.error(err)
         }
-        fetchData()
+    }
+
+    const handleDelete = async value => {
+        try {
+            if (tab === 'contatos') {
+                await fetch(
+                    `${API_URL}/api/categories/contatos/${encodeURIComponent(
+                        value
+                    )}/inativar`,
+                    { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }
+                )
+            } else {
+                await fetch(
+                    `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
+                    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+                )
+            }
+            fetchData()
+        } catch (err) {
+            console.error(err)
+        }
     }
 
     return (
@@ -103,6 +116,7 @@ export default function CategoryManagement({ token }) {
             <Typography variant="h5" gutterBottom>
                 Gerenciar Categorias
             </Typography>
+
             <Tabs value={tab} onChange={(_, v) => setTab(v)}>
                 <Tab label="LOJAS" value="lojas" />
                 <Tab label="CONTATOS" value="contatos" />
@@ -117,11 +131,11 @@ export default function CategoryManagement({ token }) {
                         setOpen(true)
                     }}
                 >
-                    Adicionar
+                    Adicionar {tab === 'ocorrencias' ? 'OCORRÊNCIAS' : tab.toUpperCase()}
                 </Button>
             </Box>
 
-            <TableContainer component={Paper}>
+            <TableContainer>
                 <Table>
                     <TableHead>
                         <TableRow>
@@ -163,11 +177,9 @@ export default function CategoryManagement({ token }) {
                 </DialogTitle>
                 <DialogContent>
                     <TextField
-                        autoFocus
+                        fullWidth
                         margin="dense"
                         label="Valor"
-                        fullWidth
-                        autoComplete="off"
                         value={current.value}
                         onChange={e =>
                             setCurrent(c => ({ ...c, value: e.target.value }))
