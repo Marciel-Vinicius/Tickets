@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline'
 
 export default function CategoryManagement({ token }) {
     const types = ['lojas', 'contatos', 'ocorrencias']
@@ -48,7 +49,6 @@ export default function CategoryManagement({ token }) {
         }
     }
 
-    // CORREÇÃO: envolver fetchData dentro de uma função para não retornar Promise
     useEffect(() => {
         fetchData()
     }, [tab])
@@ -90,19 +90,27 @@ export default function CategoryManagement({ token }) {
         }
     }
 
-    const handleDelete = async value => {
+    const handleDeleteOrInactivate = async value => {
         try {
             if (tab === 'contatos') {
+                // inativar contato
                 await fetch(
                     `${API_URL}/api/categories/contatos/${encodeURIComponent(
                         value
                     )}/inativar`,
-                    { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        method: 'PUT',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
                 )
             } else {
+                // delete normal para lojas e ocorrências
                 await fetch(
                     `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
-                    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
                 )
             }
             fetchData()
@@ -140,6 +148,7 @@ export default function CategoryManagement({ token }) {
                     <TableHead>
                         <TableRow>
                             <TableCell>Valor</TableCell>
+                            {tab === 'contatos' && <TableCell>Ativo?</TableCell>}
                             <TableCell align="right">Ações</TableCell>
                         </TableRow>
                     </TableHead>
@@ -147,6 +156,9 @@ export default function CategoryManagement({ token }) {
                         {data.map(item => (
                             <TableRow key={item.value}>
                                 <TableCell>{item.value}</TableCell>
+                                {tab === 'contatos' && (
+                                    <TableCell>{item.active ? 'Sim' : 'Não'}</TableCell>
+                                )}
                                 <TableCell align="right">
                                     <IconButton
                                         size="small"
@@ -157,12 +169,22 @@ export default function CategoryManagement({ token }) {
                                     >
                                         <EditIcon fontSize="small" />
                                     </IconButton>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => handleDelete(item.value)}
-                                    >
-                                        <DeleteIcon fontSize="small" />
-                                    </IconButton>
+
+                                    {tab === 'contatos' ? (
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => handleDeleteOrInactivate(item.value)}
+                                        >
+                                            <RemoveCircleOutlineIcon fontSize="small" />
+                                        </IconButton>
+                                    ) : (
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => handleDeleteOrInactivate(item.value)}
+                                        >
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}
