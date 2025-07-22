@@ -1,3 +1,4 @@
+// frontend/src/components/CategoryManagement.js
 import React, { useState, useEffect } from 'react';
 import API_URL from '../config';
 import {
@@ -46,10 +47,10 @@ export default function CategoryManagement({ token }) {
             }
         ).then(fetchData);
     };
-    const handleInactivate = id => {
+    const handleInactivate = v => {
         if (!window.confirm('Confirma inativar este contato?')) return;
         fetch(
-            `${API_URL}/api/categories/contatos/${id}`,
+            `${API_URL}/api/categories/contatos/${encodeURIComponent(v)}/inativar`,
             {
                 method: 'PUT',
                 headers: { Authorization: 'Bearer ' + token }
@@ -97,7 +98,7 @@ export default function CategoryManagement({ token }) {
                         <Button
                             variant="outlined"
                             size="small"
-                            onClick={() => handleInactivate(params.row.id)}
+                            onClick={() => handleInactivate(params.row.value)}
                             sx={{ ml: 1 }}
                         >
                             Inativar
@@ -128,7 +129,8 @@ export default function CategoryManagement({ token }) {
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={data.map(v => ({
-                        id: v.id || v.value,  // ← usa id real se existir
+                        // assume v is { value: string, active?: boolean }
+                        id: v.value,
                         value: v.value
                     }))}
                     columns={columns}

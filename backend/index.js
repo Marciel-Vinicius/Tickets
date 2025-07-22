@@ -1,3 +1,4 @@
+// backend/index.js
 const express = require('express');
 const cors = require('cors');
 
@@ -12,13 +13,7 @@ const { authenticate } = require('./middleware/auth');
 
 const app = express();
 
-// Configuração de CORS para liberar o frontend hospedado no Render
-app.use(cors({
-    origin: 'https://tickets-frontend-kvf1.onrender.com', // substitua pelo domínio real do seu frontend
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+app.use(cors());
 app.use(express.json());
 
 // → rotas públicas de auth (login/register)

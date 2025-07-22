@@ -1,3 +1,4 @@
+// backend/routes/categories.js
 const express = require('express');
 const { authorizeSector } = require('../middleware/auth');
 const { query } = require('../db');
@@ -5,6 +6,8 @@ const { query } = require('../db');
 const router = express.Router();
 const types = ['lojas', 'contatos', 'ocorrencias'];
 
+// Antes era authorizeSector('DEV')
+// Agora SAF tem acesso (e DEV continua master)
 router.use(authorizeSector('SAF'));
 
 // GET todas (por padrão, somente contatos ativos)
@@ -13,7 +16,7 @@ router.get('/', async (req, res) => {
     for (let t of types) {
         if (t === 'contatos') {
             const { rows } = await query(
-                'SELECT id, value FROM contatos WHERE active = true ORDER BY value',
+                'SELECT * FROM contatos WHERE active = true ORDER BY value',
                 []
             );
             result[t] = rows;
@@ -40,42 +43,27 @@ router.post('/:type', async (req, res) => {
     res.sendStatus(201);
 });
 
-// PUT – editar item de categoria
-router.put('/:type/:oldValue', async (req, res) => {
-    const { type, oldValue } = req.params;
-    const { value } = req.body;
+// PUT – renomear
+router.put('/:type', async (req, res) => {
+    const { type } = req.params;
+    const { old, value } = req.body;
     if (!types.includes(type)) return res.sendStatus(400);
     await query(
-        `UPDATE ${type} SET value = $1 WHERE value = $2`,
-        [value, oldValue]
+        `UPDATE ${type} SET value=$1 WHERE value=$2`,
+        [value, old]
     );
-    res.sendStatus(200);
+    res.json({ value });
 });
 
-// DELETE – deletar item de categoria
+// DELETE
 router.delete('/:type/:value', async (req, res) => {
     const { type, value } = req.params;
     if (!types.includes(type)) return res.sendStatus(400);
     await query(
-        `DELETE FROM ${type} WHERE value = $1`,
+        `DELETE FROM ${type} WHERE value=$1`,
         [value]
     );
-    res.sendStatus(200);
-});
-
-// PUT /api/categories/contatos/:id → inativar contato
-router.put('/contatos/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await query(
-            'UPDATE contatos SET active = false WHERE id = $1',
-            [id]
-        );
-        res.sendStatus(200);
-    } catch (err) {
-        console.error(err);
-        res.sendStatus(500);
-    }
+    res.sendStatus(204);
 });
 
 module.exports = router;
