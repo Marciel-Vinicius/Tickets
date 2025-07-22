@@ -30,8 +30,10 @@ export default function AtendimentoForm({
   });
   const [opts, setOpts] = useState({ lojas: [], contatos: [], ocorrencias: [] });
 
-  // carrega categorias com tratamento de erro
+  // carrega categorias - **não** roda se token for falsy
   useEffect(() => {
+    if (!token) return;
+
     fetch(`${API_URL}/api/categories`, {
       headers: { Authorization: 'Bearer ' + token }
     })
@@ -39,13 +41,13 @@ export default function AtendimentoForm({
         if (!r.ok) throw new Error(`Status ${r.status}`);
         return r.json();
       })
-      .then(data =>
+      .then(data => {
         setOpts({
           lojas: Array.isArray(data.lojas) ? data.lojas : [],
           contatos: Array.isArray(data.contatos) ? data.contatos : [],
           ocorrencias: Array.isArray(data.ocorrencias) ? data.ocorrencias : []
-        })
-      )
+        });
+      })
       .catch(err => {
         console.error('Erro ao carregar categorias:', err);
         setOpts({ lojas: [], contatos: [], ocorrencias: [] });
