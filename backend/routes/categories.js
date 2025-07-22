@@ -55,6 +55,18 @@ router.put('/:type', async (req, res) => {
     res.json({ value });
 });
 
+// NOVA ROTA – inativar contato
+router.put('/:type/:value/inativar', async (req, res) => {
+    const { type, value } = req.params;
+    // só contatos têm campo active
+    if (type !== 'contatos') return res.sendStatus(400);
+    await query(
+        'UPDATE contatos SET active = false WHERE value = $1',
+        [value]
+    );
+    res.sendStatus(204);
+});
+
 // DELETE
 router.delete('/:type/:value', async (req, res) => {
     const { type, value } = req.params;
