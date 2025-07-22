@@ -6,10 +6,11 @@ const { query } = require('../db');
 const router = express.Router();
 const types = ['lojas', 'contatos', 'ocorrencias'];
 
-router.use(authorizeSector('SAF')); // ou ajuste para DEV+SAF, como preferir
+// Só SAF (ou ajuste para DEV+SAF)
+router.use(authorizeSector('DEV+SAF'));
 
 // GET /api/categories
-// → sempre retorna arrays de objetos { value: string, [active: boolean] }
+// → retorna sempre arrays de objetos { value, [active] }
 router.get('/', async (req, res) => {
     try {
         const result = {};
@@ -19,15 +20,13 @@ router.get('/', async (req, res) => {
                     'SELECT value, active FROM contatos WHERE active = true ORDER BY value',
                     []
                 );
-                // [{ value, active }, …]
-                result[t] = rows;
+                result[t] = rows; // [{ value, active }, ...]
             } else {
                 const { rows } = await query(
                     `SELECT value FROM ${t} ORDER BY value`,
                     []
                 );
-                // converte para [{ value }, …]
-                result[t] = rows.map(r => ({ value: r.value }));
+                result[t] = rows.map(r => ({ value: r.value })); // [{ value }, ...]
             }
         }
         res.json(result);

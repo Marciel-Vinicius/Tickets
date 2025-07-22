@@ -24,34 +24,30 @@ export default function CategoryManagement({ token }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState({ old: '', value: '' });
 
-    // Busca e normaliza: item é sempre { value, [active] }
+    // Busca e normaliza: cada item vira { id: number, value: string, [active]: boolean }
     const fetchData = async () => {
         try {
             const res = await fetch(`${API_URL}/api/categories`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (!res.ok) throw new Error(res.statusText);
             const obj = await res.json();
-            const items = obj[tab] || [];
-
-            const rows = items.map(item => {
-                const val = item.value;
-                const active = item.active;
-                return {
-                    id: `${tab}-${val}`,  // string única
-                    value: val,           // string pura para exibir
-                    ...(active !== undefined && { active }), // só contatos
-                };
-            });
-
+            const items = Array.isArray(obj[tab]) ? obj[tab] : [];
+            const rows = items.map((item, idx) => ({
+                id: idx,               // índice garante número único
+                value: item.value,     // string
+                ...(item.active !== undefined && { active: item.active }),
+            }));
             setData(rows);
         } catch (err) {
             console.error('Erro ao buscar categorias:', err);
+            setData([]);
         }
     };
 
     useEffect(fetchData, [tab]);
 
-    // POST
+    // Cria novo
     const handleAdd = async () => {
         try {
             await fetch(`${API_URL}/api/categories/${tab}`, {
@@ -69,7 +65,7 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // PUT rename
+    // Edita (rename)
     const handleSave = async () => {
         try {
             await fetch(
@@ -90,7 +86,7 @@ export default function CategoryManagement({ token }) {
         }
     };
 
-    // DELETE / inativar
+    // Exclui ou inativa
     const handleDelete = async (value) => {
         try {
             if (tab === 'contatos') {
@@ -98,18 +94,12 @@ export default function CategoryManagement({ token }) {
                     `${API_URL}/api/categories/contatos/${encodeURIComponent(
                         value
                     )}/inativar`,
-                    {
-                        method: 'PUT',
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
+                    { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }
                 );
             } else {
                 await fetch(
                     `${API_URL}/api/categories/${tab}/${encodeURIComponent(value)}`,
-                    {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
+                    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
                 );
             }
             fetchData();
@@ -125,7 +115,7 @@ export default function CategoryManagement({ token }) {
             headerName: 'Ações',
             width: 120,
             sortable: false,
-            renderCell: (params) => (
+            renderCell: params => (
                 <>
                     <IconButton
                         size="small"
@@ -157,7 +147,7 @@ export default function CategoryManagement({ token }) {
                 value={tab}
                 onChange={(_, v) => {
                     setTab(v);
-                    setData([]); // limpa enquanto recarrega
+                    setData([]); // limpa antes de recarregar
                 }}
             >
                 <Tab label="LOJAS" value="lojas" />
@@ -180,10 +170,9 @@ export default function CategoryManagement({ token }) {
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={data}
-                    getRowId={row => row.id}  // sempre função!
                     columns={columns}
                     pageSize={10}
-                    rowsPerPageOptions={[5, 10, 25, 100]}
+                    rowsPerPageOptions={[5, 10, 25]}
                     disableSelectionOnClick
                 />
             </div>
