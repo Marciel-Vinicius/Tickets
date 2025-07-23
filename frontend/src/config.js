@@ -1,9 +1,8 @@
 // frontend/src/config.js
 
-// Se você definiu REACT_APP_API_URL (no Render), ela será usada.
-// Caso contrário, usamos caminho relativo (""), de modo que:
-//   • Em dev local: fetch("/api/...") → proxy para localhost:10000 via static.yaml
-//   • Em prod no Render: fetch("/api/...") → proxy para VM via static.yaml
+// Mantemos a variável só para casos especiais (novo domínio HTTPS etc),
+// mas por padrão deixamos vazio, assim todas as chamadas ficarão em:
+//    fetch("/api/…")  ➔ proxy via static.yaml  ➔ VM HTTP
 const API_URL = process.env.REACT_APP_API_URL ?? '';
 
 export default API_URL;

@@ -1,3 +1,4 @@
+// frontend/src/components/Login.js
 import React, { useState } from 'react';
 import API_URL from '../config';
 import {
@@ -25,16 +26,25 @@ export default function Login({ onLogin, showRegister }) {
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
+
     try {
+      // Como API_URL === '' em produção no Render,
+      // isso vira fetch('/api/auth/login', ...)
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Erro no login');
+      }
+
       const { token } = await res.json();
       onLogin(token, remember);
-    } catch {
+    } catch (err) {
+      console.error('Erro no login:', err);
       setError('Usuário ou senha incorretos.');
     }
   };
@@ -100,4 +110,3 @@ export default function Login({ onLogin, showRegister }) {
     </Card>
   );
 }
-// Cria
