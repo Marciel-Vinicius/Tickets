@@ -1,0 +1,19 @@
+{
+  # Desabilita o listener HTTP (porta 80) e o redirect auto
+  auto_https disable_redirects
+}
+
+20.197.180.62.nip.io {
+  # 1) Primeiro, roteia tudo em /api/* para o backend na porta 10000
+  @api {
+    path /api/*
+  }
+  reverse_proxy @api localhost:10000
+
+  # 2) Depois, serve seus arquivos estáticos do React
+  root * C:/Users/nest/Desktop/Tickets/frontend/build
+  # Se o arquivo existir, serve; senão devolve index.html (SPA fallback)
+  try_files {path} /index.html
+
+  file_server
+}
