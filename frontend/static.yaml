@@ -1,0 +1,8 @@
+# static.yaml
+# Instruções de proxy para o Render: todo /api/* será repassado
+# para o seu backend na VM, evitando Mixed Content.
+
+routes:
+  - type: rewrite
+    source: /api/(.*)
+    destination: http://20.197.180.62:10000/api/$1
