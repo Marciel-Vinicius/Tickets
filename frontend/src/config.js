@@ -1,7 +1,5 @@
-// frontend/src/config.js
-
-// Em produção (NODE_ENV==='production'), força string vazia.
-// Em desenvolvimento, você pode usar REACT_APP_API_URL se precisar.
+// src/config.js
+// Em produção, escondemos qualquer API_URL e usamos sempre caminhos relativos.
 const API_URL =
   process.env.NODE_ENV === 'production'
     ? ''

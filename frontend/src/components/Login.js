@@ -1,6 +1,5 @@
-// frontend/src/components/Login.js
+// src/components/Login.js
 import React, { useState } from 'react';
-import API_URL from '../config';
 import {
   Box,
   Card,
@@ -27,17 +26,22 @@ export default function Login({ onLogin, showRegister }) {
     e.preventDefault();
     setError('');
 
+    // Em produção, isso dispara para "/api/auth/login" (proxyado pelo static.yaml)
+    // Em dev, você pode definir REACT_APP_API_URL para http://localhost:10000
+    const loginUrl =
+      process.env.NODE_ENV === 'production'
+        ? '/api/auth/login'
+        : `${process.env.REACT_APP_API_URL || ''}/api/auth/login`;
+
     try {
-      // Como API_URL === '' em produção no Render,
-      // isso vira fetch('/api/auth/login', ...)
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Erro no login');
       }
 

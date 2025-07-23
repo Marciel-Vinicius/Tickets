@@ -1,4 +1,4 @@
-# frontend/static.yaml
+# static.yaml
 routes:
   - type: rewrite
     source: /api/(.*)
