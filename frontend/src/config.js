@@ -1,8 +1,10 @@
 // frontend/src/config.js
 
-// Mantemos a variável só para casos especiais (novo domínio HTTPS etc),
-// mas por padrão deixamos vazio, assim todas as chamadas ficarão em:
-//    fetch("/api/…")  ➔ proxy via static.yaml  ➔ VM HTTP
-const API_URL = process.env.REACT_APP_API_URL ?? '';
+// Em produção (NODE_ENV==='production'), força string vazia.
+// Em desenvolvimento, você pode usar REACT_APP_API_URL se precisar.
+const API_URL =
+  process.env.NODE_ENV === 'production'
+    ? ''
+    : process.env.REACT_APP_API_URL || '';
 
 export default API_URL;
