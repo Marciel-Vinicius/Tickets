@@ -1,7 +1,0 @@
-# static.yaml
-routes:
-  - type: rewrite
-    source: /api/(.*)
-    destination: http://20.197.180.62:10000/api/$1
-
-

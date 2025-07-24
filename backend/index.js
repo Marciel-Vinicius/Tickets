@@ -3,11 +3,11 @@ const express = require('express');
 const cors = require('cors');
 
 // rotas
-const authRouter         = require('./routes/auth');
-const usersRouter        = require('./routes/users');
-const categoriesRouter   = require('./routes/categories');
+const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
+const categoriesRouter = require('./routes/categories');
 const atendimentosRouter = require('./routes/atendimentos');
-const reportsRouter      = require('./routes/reports');
+const reportsRouter = require('./routes/reports'); // ← importe aqui
 
 const { authenticate } = require('./middleware/auth');
 
@@ -23,12 +23,14 @@ app.use('/api/auth', authRouter);
 app.use(authenticate);
 
 // → rotas protegidas
-app.use('/api/users',      usersRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/atendimentos', atendimentosRouter);
 
 // → rotas de relatórios
 app.use('/api/reports', reportsRouter);
 
-// Exporta o app para ser usado pelo server.js (HTTPS)
-module.exports = app;
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+    console.log(`🚀 Backend rodando na porta ${PORT}`);
+});
