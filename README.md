@@ -237,3 +237,195 @@ npm run build
 
 > **Licença**: MIT  
 > **Autor**: Marciel de Lara
+
+
+---
+
+## Estrutura de Pastas
+
+```
+/Tickets
+ ├─ /backend
+ ├─ /frontend
+ └─ /Caddy
+     └─ Caddyfile
+```
+
+---
+
+## 1. Pré-requisitos
+
+- **Windows Server 2022** (VM Azure).  
+- **Node.js LTS** (v16+).  
+- **PostgreSQL** acessível em `postgres://postgres:84365646@20.197.180.62:5430/tickets`.  
+- **PM2** (gerenciador de processos Node.js).  
+- **Caddy** (servidor HTTPS com Let’s Encrypt).  
+- **DNS A record** configurado:
+  - Host: `ticketssaf.njf.ind.br` → `20.197.180.62`
+
+---
+
+## 2. Configuração do Banco de Dados
+
+No backend, crie ou edite o arquivo `.env` com:
+
+```env
+DATABASE_URL=postgres://postgres:84365646@20.197.180.62:5430/tickets
+PORT=10000
+```
+
+---
+
+## 3. Deploy do Backend
+
+Abra um PowerShell como Administrador e execute:
+
+```powershell
+# Instalar PM2 globalmente (se ainda não tiver)
+npm install pm2 -g
+
+# Navegar para a pasta do backend
+cd C:\Tickets\backend
+
+# Instalar dependências
+npm install
+
+# Copiar e editar o arquivo .env
+Copy-Item .env.example .env
+notepad .env
+# Ajuste DATABASE_URL e PORT=10000
+
+# Executar as migrations
+npm run migrate
+
+# Iniciar o backend via PM2
+pm2 start index.js --name tickets-backend
+pm2 save
+
+# Configurar auto-início no Windows
+pm2 startup windows
+# Copie e execute o comando exibido
+pm2 save
+```
+
+---
+
+## 4. Deploy do Frontend
+
+```powershell
+# Navegar para a pasta do frontend
+cd C:\Tickets\frontend
+
+# Instalar dependências
+npm install
+
+# Ajustar src/config.js para apontar para HTTPS na VM
+# frontend/src/config.js
+const DEFAULT_LOCAL = 'http://localhost:3001';
+const PROD_BACKEND = 'https://ticketssaf.njf.ind.br';
+const isProduction =
+  process.env.NODE_ENV === 'production' ||
+  window.location.hostname !== 'localhost';
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (isProduction ? PROD_BACKEND : DEFAULT_LOCAL);
+export default API_URL;
+
+# Gerar o build estático
+npm run build
+```
+
+---
+
+## 5. Configuração do Caddy
+
+Edite `C:\Caddy\Caddyfile` com:
+
+```caddyfile
+{
+    http_port 0
+    https_port 443
+    auto_https disable_redirects
+}
+
+ticketssaf.njf.ind.br {
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy localhost:10000
+    }
+
+    root * C:\Tickets\frontend\build
+    file_server
+
+    try_files {path} /index.html
+}
+```
+
+Para rodar o Caddy:
+
+```powershell
+# Em foreground (manual/desenvolvimento)
+cd C:\Caddy
+.\caddy.exe run --config Caddyfile
+
+# Como serviço Windows (produção)
+cd C:\Caddy
+.\caddy.exe service install --config Caddyfile
+.\caddy.exe service start
+
+# Para aplicar novas configurações
+# Se em foreground:
+.\caddy.exe reload --config Caddyfile
+# Se como serviço:
+.\caddy.exe service restart
+```
+
+---
+
+## 6. Gerenciamento dos Serviços
+
+### Backend (PM2)
+
+```powershell
+# Visualizar status das aplicações
+pm2 status
+
+# Visualizar logs do backend
+pm2 logs tickets-backend
+```
+
+### Caddy (Serviço Windows)
+
+```powershell
+# Definir Caddy para iniciar com o Windows
+Set-Service -Name Caddy -StartupType Automatic
+
+# Iniciar o serviço
+Start-Service -Name Caddy
+
+# Verificar status
+Get-Service -Name Caddy
+
+# Exibir últimos logs (se configurado)
+Get-Content -Path 'C:\Caddy\caddy.log' -Tail 50
+
+# Ver eventos do Windows
+Get-EventLog -LogName Application -Source Caddy -Newest 20
+```
+
+---
+
+## 7. Testes Finais
+
+- **API health**:
+  ```bash
+  curl https://ticketssaf.njf.ind.br/api/health
+  ```
+- **Front‑end**:
+  Acesse `https://ticketssaf.njf.ind.br/` no navegador e faça login.
+
+---
+
+> **Licença**: MIT  
+> **Autor**: Marciel de Lara  
