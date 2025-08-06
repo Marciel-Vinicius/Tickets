@@ -56,7 +56,6 @@ export default function ReportDashboard() {
     const qs =
       startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : "";
     try {
-      // chamadas para /api/reports/*
       const [
         sumRes,
         userRes,
@@ -75,7 +74,6 @@ export default function ReportDashboard() {
         fetch(`${API_URL}/api/reports/byMonth${qs}`)
       ]);
 
-      // check de res.ok opcional para depuração
       if (!sumRes.ok) {
         const txt = await sumRes.text();
         console.error("Erro summary (HTML):", txt);
@@ -90,7 +88,6 @@ export default function ReportDashboard() {
       setBySector(await secRes.json());
       setByMonth(await monRes.json());
 
-      // dados brutos para CSV
       const rawRes = await fetch(`${API_URL}/api/atendimentos${qs}`);
       if (!rawRes.ok) {
         const txt = await rawRes.text();
