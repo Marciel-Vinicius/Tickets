@@ -248,4 +248,3 @@ router.get('/report/:date', async (req, res) => {
 });
 
 module.exports = router;
-//teste
