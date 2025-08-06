@@ -5,9 +5,19 @@ const PDFDocument = require('pdfkit');
 const { query } = require('../db');
 const router = express.Router();
 
-// Listar TODOS os atendimentos, incluindo quantidade de sábados trabalhados por atendente
+// Listar TODOS os atendimentos, incluindo quantidade de sábados trabalhados por atendente,
+// com filtro opcional por período via query params ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 router.get('/', async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+    const params = [];
+    let where = '';
+
+    if (startDate && endDate) {
+      where = `WHERE dia BETWEEN $1 AND $2`;
+      params.push(startDate, endDate);
+    }
+
     const { rows } = await query(
       `
       SELECT
@@ -23,9 +33,10 @@ router.get('/', async (req, res) => {
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM dia) = 6)
           OVER (PARTITION BY atendente) AS sabados_trabalhados
       FROM atendimentos
+      ${where}
       ORDER BY dia DESC, hora_inicio DESC
       `,
-      []
+      params
     );
     res.json(rows);
   } catch (err) {
@@ -78,12 +89,12 @@ router.put('/:id', async (req, res) => {
       UPDATE atendimentos
       SET
         atendente   = $1,
-        dia          = $2,
-        hora_inicio  = $3,
-        hora_fim     = $4,
-        loja         = $5,
-        contato      = $6,
-        ocorrencia   = $7
+        dia         = $2,
+        hora_inicio = $3,
+        hora_fim    = $4,
+        loja        = $5,
+        contato     = $6,
+        ocorrencia  = $7
       WHERE id = $8
       `,
       [atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
@@ -168,7 +179,6 @@ router.get('/report/:date', async (req, res) => {
     doc.moveDown(0.5);
     const [y, m, d] = date.split('-');
     let dateText = `Data: ${d}/${m}/${y}`;
-    // Se for múltiplo de 4, marca o plantão
     if (saturdayCount > 0 && saturdayCount % 4 === 0) {
       dateText += ` (${saturdayCount}º plantão)`;
     }
@@ -192,7 +202,6 @@ router.get('/report/:date', async (req, res) => {
     const rowYs = [];
 
     items.forEach(item => {
-      // calcular altura da linha
       const heights = colWidths.map((w, i) =>
         doc.heightOfString(
           [item.hora_inicio, item.hora_fim || '-', item.loja, item.contato, item.ocorrencia][i],
@@ -201,8 +210,6 @@ router.get('/report/:date', async (req, res) => {
       );
       const rowHeight = Math.max(...heights) + 10;
       rowYs.push({ y: currentY, h: rowHeight });
-
-      // centralizar verticalmente
       const yCenter = currentY + rowHeight / 2;
       doc.font('Helvetica').fontSize(10);
       doc.text(item.hora_inicio, colXs[0], yCenter - heights[0] / 2, { width: colWidths[0], align: 'center' });
@@ -210,7 +217,6 @@ router.get('/report/:date', async (req, res) => {
       doc.text(item.loja, colXs[2], yCenter - heights[2] / 2, { width: colWidths[2], align: 'center' });
       doc.text(item.contato, colXs[3], yCenter - heights[3] / 2, { width: colWidths[3], align: 'center' });
       doc.text(item.ocorrencia, colXs[4], yCenter - heights[4] / 2, { width: colWidths[4], align: 'left' });
-
       currentY += rowHeight;
     });
 
