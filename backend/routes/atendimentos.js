@@ -5,19 +5,9 @@ const PDFDocument = require('pdfkit');
 const { query } = require('../db');
 const router = express.Router();
 
-// Listar TODOS os atendimentos, incluindo quantidade de sábados trabalhados por atendente,
-// com filtro opcional por período via query params ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+// Listar TODOS os atendimentos, incluindo quantidade de sábados trabalhados por atendente
 router.get('/', async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-    const params = [];
-    let where = '';
-
-    if (startDate && endDate) {
-      where = `WHERE dia BETWEEN $1 AND $2`;
-      params.push(startDate, endDate);
-    }
-
     const { rows } = await query(
       `
       SELECT
@@ -33,10 +23,9 @@ router.get('/', async (req, res) => {
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM dia) = 6)
           OVER (PARTITION BY atendente) AS sabados_trabalhados
       FROM atendimentos
-      ${where}
       ORDER BY dia DESC, hora_inicio DESC
       `,
-      params
+      []
     );
     res.json(rows);
   } catch (err) {
@@ -89,12 +78,12 @@ router.put('/:id', async (req, res) => {
       UPDATE atendimentos
       SET
         atendente   = $1,
-        dia         = $2,
-        hora_inicio = $3,
-        hora_fim    = $4,
-        loja        = $5,
-        contato     = $6,
-        ocorrencia  = $7
+        dia          = $2,
+        hora_inicio  = $3,
+        hora_fim     = $4,
+        loja         = $5,
+        contato      = $6,
+        ocorrencia   = $7
       WHERE id = $8
       `,
       [atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
@@ -126,7 +115,12 @@ router.get('/report/:date', async (req, res) => {
     // 1) Buscar os registros do plantão do dia
     const { rows: items } = await query(
       `
-      SELECT hora_inicio, hora_fim, loja, contato, ocorrencia
+      SELECT
+        hora_inicio,
+        hora_fim,
+        loja,
+        contato,
+        ocorrencia
       FROM atendimentos
       WHERE to_char(dia, 'YYYY-MM-DD') = $1
       ORDER BY hora_inicio ASC
@@ -137,10 +131,11 @@ router.get('/report/:date', async (req, res) => {
     // 2) Contar quantos sábados distintos já trabalhou até essa data
     const { rows: satRows } = await query(
       `
-      SELECT COALESCE(
-        COUNT(DISTINCT dia) FILTER (WHERE EXTRACT(DOW FROM dia) = 6),
-        0
-      ) AS count
+      SELECT
+        COALESCE(
+          COUNT(DISTINCT dia) FILTER (WHERE EXTRACT(DOW FROM dia) = 6),
+          0
+        ) AS count
       FROM atendimentos
       WHERE atendente = $1
         AND dia <= $2::date
@@ -149,13 +144,14 @@ router.get('/report/:date', async (req, res) => {
     );
     const workedSaturdays = parseInt(satRows[0].count, 10) || 0;
 
-    // 3) Obter override inicial de sábados (se existir)
+    // 3) Obter override de sábados iniciais (se existir)
     const { rows: userRows } = await query(
       `SELECT initial_saturdays FROM users WHERE username = $1`,
       [atendente]
     );
     const initial = parseInt(userRows[0]?.initial_saturdays, 10) || 0;
 
+    // Total de sábados considerados
     const saturdayCount = workedSaturdays + initial;
 
     // 4) Gerar PDF
@@ -167,16 +163,19 @@ router.get('/report/:date', async (req, res) => {
     );
     doc.pipe(res);
 
+    // Cabeçalho
     doc.font('Helvetica-Bold').fontSize(14).text('PLANTONISTA: ' + atendente);
     doc.moveDown(0.5);
     const [y, m, d] = date.split('-');
     let dateText = `Data: ${d}/${m}/${y}`;
+    // Se for múltiplo de 4, marca o plantão
     if (saturdayCount > 0 && saturdayCount % 4 === 0) {
       dateText += ` (${saturdayCount}º plantão)`;
     }
     doc.font('Helvetica').fontSize(12).text(dateText);
     doc.moveDown();
 
+    // Títulos das colunas
     const startY = doc.y;
     doc.font('Helvetica-Bold').fontSize(10);
     doc.text('H.Início', 40, startY);
@@ -186,12 +185,14 @@ router.get('/report/:date', async (req, res) => {
     doc.text('Ocorrência', 360, startY, { width: 200 });
     doc.moveDown(0.5);
 
+    // Linhas de dados
     const colXs = [40, 100, 160, 260, 360];
     const colWidths = [60, 60, 100, 100, 200];
     let currentY = doc.y;
     const rowYs = [];
 
     items.forEach(item => {
+      // calcular altura da linha
       const heights = colWidths.map((w, i) =>
         doc.heightOfString(
           [item.hora_inicio, item.hora_fim || '-', item.loja, item.contato, item.ocorrencia][i],
@@ -200,26 +201,20 @@ router.get('/report/:date', async (req, res) => {
       );
       const rowHeight = Math.max(...heights) + 10;
       rowYs.push({ y: currentY, h: rowHeight });
+
+      // centralizar verticalmente
       const yCenter = currentY + rowHeight / 2;
       doc.font('Helvetica').fontSize(10);
-      doc.text(item.hora_inicio, colXs[0], yCenter - heights[0] / 2, {
-        width: colWidths[0], align: 'center'
-      });
-      doc.text(item.hora_fim || '-', colXs[1], yCenter - heights[1] / 2, {
-        width: colWidths[1], align: 'center'
-      });
-      doc.text(item.loja, colXs[2], yCenter - heights[2] / 2, {
-        width: colWidths[2], align: 'center'
-      });
-      doc.text(item.contato, colXs[3], yCenter - heights[3] / 2, {
-        width: colWidths[3], align: 'center'
-      });
-      doc.text(item.ocorrencia, colXs[4], yCenter - heights[4] / 2, {
-        width: colWidths[4], align: 'left'
-      });
+      doc.text(item.hora_inicio, colXs[0], yCenter - heights[0] / 2, { width: colWidths[0], align: 'center' });
+      doc.text(item.hora_fim || '-', colXs[1], yCenter - heights[1] / 2, { width: colWidths[1], align: 'center' });
+      doc.text(item.loja, colXs[2], yCenter - heights[2] / 2, { width: colWidths[2], align: 'center' });
+      doc.text(item.contato, colXs[3], yCenter - heights[3] / 2, { width: colWidths[3], align: 'center' });
+      doc.text(item.ocorrencia, colXs[4], yCenter - heights[4] / 2, { width: colWidths[4], align: 'left' });
+
       currentY += rowHeight;
     });
 
+    // Desenhar linhas da tabela
     rowYs.forEach(row => {
       doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
     });
@@ -228,6 +223,7 @@ router.get('/report/:date', async (req, res) => {
       doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
     });
 
+    // Rodapé de assinaturas
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
     const lineW = 210;
     doc.font('Helvetica').fontSize(12);

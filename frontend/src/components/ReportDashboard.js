@@ -1,337 +1,265 @@
-// frontend/src/components/ReportDashboard.js
 import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Typography,
-  Grid,
-  Paper,
-  CircularProgress,
-  TextField,
-  Button,
-  Alert
+    Box, Typography, Grid, Paper, CircularProgress
 } from "@mui/material";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Tooltip,
-  Legend
+    Bar, Line, Pie
+} from "react-chartjs-2";
+import {
+    Chart as ChartJS,
+    BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
 } from "chart.js";
-import { Bar, Line, Pie } from "react-chartjs-2";
 import API_URL from "../config";
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Tooltip,
-  Legend
+    BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend
 );
 
-export default function ReportDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({
-    averageTime: 0,
-    total: 0,
-    topUser: { atendente: "", count: 0 }
-  });
-  const [byUser, setByUser] = useState([]);
-  const [byDay, setByDay] = useState([]);
-  const [byMonth, setByMonth] = useState([]);
-  const [byStore, setByStore] = useState([]);
-  const [byOccurrence, setByOccurrence] = useState([]);
-  const [bySector, setBySector] = useState([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [rawData, setRawData] = useState([]);
-  const [error, setError] = useState("");
+// CORES fixas
+const COLORS = [
+    "#1976d2", "#d32f2f", "#388e3c", "#fbc02d", "#7b1fa2", "#0288d1", "#c2185b",
+    "#ff9800", "#43a047", "#ba68c8", "#ff7043", "#00796b"
+];
 
-  // Pega o token JWT do localStorage
-  const token = localStorage.getItem("token");
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: token ? `Bearer ${token}` : ""
-  };
-
-  // Função que carrega todos os relatórios
-  const fetchReports = async () => {
-    setLoading(true);
-    setError("");
-    const qs =
-      startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : "";
-    try {
-      const [
-        sumRes,
-        userRes,
-        dayRes,
-        monthRes,
-        storeRes,
-        occRes,
-        secRes
-      ] = await Promise.all([
-        fetch(`${API_URL}/api/reports/summary${qs}`, { headers }),
-        fetch(`${API_URL}/api/reports/byUser${qs}`, { headers }),
-        fetch(`${API_URL}/api/reports/byDay${qs}`, { headers }),
-        fetch(`${API_URL}/api/reports/byMonth${qs}`, { headers }),
-        fetch(`${API_URL}/api/reports/byStore${qs}`, { headers }),
-        fetch(`${API_URL}/api/reports/byOccurrence${qs}`, { headers }),
-        fetch(`${API_URL}/api/reports/bySector${qs}`, { headers })
-      ]);
-
-      if (sumRes.status === 401) {
-        throw new Error("Token não fornecido ou expirado. Faça login novamente.");
-      }
-      if (!sumRes.ok) {
-        const txt = await sumRes.text();
-        throw new Error("Erro no summary: " + txt);
-      }
-
-      setSummary(await sumRes.json());
-      setByUser(await userRes.json());
-      setByDay(await dayRes.json());
-      setByMonth(await monthRes.json());
-      setByStore(await storeRes.json());
-      setByOccurrence(await occRes.json());
-      setBySector(await secRes.json());
-
-      // Dados brutos para exportar
-      const rawRes = await fetch(`${API_URL}/api/atendimentos${qs}`, {
-        headers
-      });
-      if (rawRes.status === 401) {
-        throw new Error("Token não fornecido ou expirado. Faça login novamente.");
-      }
-      if (!rawRes.ok) {
-        const txt = await rawRes.text();
-        throw new Error("Erro nos dados brutos: " + txt);
-      }
-      setRawData(await rawRes.json());
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Ao montar o componente, carrega relatórios
-  useEffect(() => {
-    if (token) {
-      fetchReports();
-    } else {
-      setLoading(false);
-      setError("Você precisa estar logado para ver os relatórios.");
-    }
-    // eslint-disable-next-line
-  }, []);
-
-  const handleFilter = () => {
-    if (startDate && endDate) {
-      fetchReports();
-    }
-  };
-
-  const exportToCSV = () => {
-    if (!rawData.length) return;
-    const headersCsv = [
-      "ID",
-      "Atendente",
-      "Setor",
-      "Dia",
-      "Hora Início",
-      "Hora Fim",
-      "Loja",
-      "Contato",
-      "Ocorrência"
-    ];
-    const rows = rawData.map((item) => [
-      item.id,
-      item.atendente,
-      item.setor,
-      item.dia,
-      item.hora_inicio || item.horaInicio,
-      item.hora_fim || item.horaFim || "",
-      item.loja,
-      item.contato,
-      item.ocorrencia
-    ]);
-    const csvContent = [
-      headersCsv.join(","),
-      ...rows.map((r) => r.map((v) => `"${v}"`).join(","))
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute(
-      "download",
-      `relatorio_${startDate || "all"}_${endDate || "all"}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  if (loading) {
+function CardChart({ title, children, empty }) {
     return (
-      <Box textAlign="center" mt={5}>
-        <CircularProgress />
-      </Box>
+        <Paper elevation={3} sx={{
+            minHeight: 370,
+            minWidth: 260,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            p: 2
+        }}>
+            <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>{title}</Typography>
+            <Box sx={{
+                flex: 1,
+                width: "100%",
+                height: 300,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+            }}>
+                {empty ? (
+                    <Typography variant="body2" color="text.secondary">Sem dados</Typography>
+                ) : children}
+            </Box>
+        </Paper>
     );
-  }
+}
 
-  return (
-    <Box p={2}>
-      <Typography variant="h5" gutterBottom>
-        Relatórios
-      </Typography>
+export default function ReportDashboard({ token }) {
+    const [summary, setSummary] = useState({});
+    const [byUser, setByUser] = useState([]);
+    const [byDay, setByDay] = useState([]);
+    const [byStore, setByStore] = useState([]);
+    const [byOccurrence, setByOccurrence] = useState([]);
+    const [bySector, setBySector] = useState([]);
+    const [byMonth, setByMonth] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+    useEffect(() => {
+        setLoading(true);
+        Promise.all([
+            fetch(`${API_URL}/api/reports/summary`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
+            fetch(`${API_URL}/api/reports/byUser`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
+            fetch(`${API_URL}/api/reports/byDay`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
+            fetch(`${API_URL}/api/reports/byStore`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
+            fetch(`${API_URL}/api/reports/byOccurrence`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
+            fetch(`${API_URL}/api/reports/bySector`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
+            fetch(`${API_URL}/api/reports/byMonth`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json())
+        ]).then(([sum, user, day, store, occ, sector, month]) => {
+            setSummary(sum);
+            setByUser(user);
+            setByDay(day.map(r => {
+                const [y, m, d] = r.dia.split('-');
+                return { ...r, dia: `${d}/${m}` };
+            }));
+            setByStore(store);
+            setByOccurrence(occ);
+            setBySector(sector);
+            setByMonth(month.map(r => {
+                const [y, m] = r.mes.split('-');
+                return { ...r, mes: `${m}/${y}` };
+            }));
+            setLoading(false);
+        }).catch(err => {
+            console.error(err);
+            setLoading(false);
+        });
+    }, [token]);
 
-      {!token ? (
-        <Typography>Por favor, faça login para acessar os relatórios.</Typography>
-      ) : (
-        <>
-          <Box display="flex" alignItems="center" mb={3}>
-            <TextField
-              label="Data Início"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Data Fim"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ ml: 2 }}
-            />
-            <Button variant="contained" onClick={handleFilter} sx={{ ml: 2 }}>
-              Filtrar
-            </Button>
-            <Button variant="outlined" onClick={exportToCSV} sx={{ ml: 2 }}>
-              Exportar Excel
-            </Button>
-          </Box>
+    if (loading) return (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+            <CircularProgress />
+        </Box>
+    );
 
-          <Grid container spacing={2}>
-            {/* Resumo */}
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Tempo Médio</Typography>
-                <Typography variant="h4">{summary.averageTime} min</Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Total de Atend.</Typography>
-                <Typography variant="h4">{summary.total}</Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Top Atendente</Typography>
-                <Typography variant="h4">
-                  {summary.topUser.atendente || "-"} ({summary.topUser.count})
-                </Typography>
-              </Paper>
+    // Preparação dos datasets para Chart.js
+    const barUser = {
+        labels: byUser.map(i => i.atendente),
+        datasets: [{
+            label: "Atendimentos",
+            data: byUser.map(i => i.count),
+            backgroundColor: COLORS
+        }]
+    };
+    const barSector = {
+        labels: bySector.map(i => i.setor),
+        datasets: [{
+            label: "Atendimentos",
+            data: bySector.map(i => i.count),
+            backgroundColor: COLORS
+        }]
+    };
+    const lineDay = {
+        labels: byDay.map(i => i.dia),
+        datasets: [{
+            label: "Atendimentos",
+            data: byDay.map(i => i.count),
+            fill: false,
+            borderColor: "#1976d2",
+            tension: 0.3,
+            pointBackgroundColor: "#1976d2"
+        }]
+    };
+    const lineMonth = {
+        labels: byMonth.map(i => i.mes),
+        datasets: [{
+            label: "Atendimentos",
+            data: byMonth.map(i => i.count),
+            fill: false,
+            borderColor: "#fbc02d",
+            tension: 0.3,
+            pointBackgroundColor: "#fbc02d"
+        }]
+    };
+    const pieStore = {
+        labels: byStore.map(i => i.loja.length > 15 ? i.loja.slice(0, 14) + "..." : i.loja),
+        datasets: [{
+            data: byStore.map(i => i.count),
+            backgroundColor: COLORS,
+            borderWidth: 1
+        }]
+    };
+    const pieOccurrence = {
+        labels: byOccurrence.map(i => i.ocorrencia.length > 15 ? i.ocorrencia.slice(0, 14) + "..." : i.ocorrencia),
+        datasets: [{
+            data: byOccurrence.map(i => i.count),
+            backgroundColor: COLORS,
+            borderWidth: 1
+        }]
+    };
+
+    return (
+        <Box sx={{
+            width: "100vw",
+            minHeight: "100vh",
+            p: 0,
+            m: 0,
+            overflowX: "hidden",
+            background: "#fff"
+        }}>
+            <Typography variant="h5" gutterBottom sx={{ ml: 4, mt: 2 }}>Painel de Relatórios</Typography>
+            {/* Cards de resumo */}
+            <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
+                {[{ title: "Tempo Médio", value: summary?.averageTime || "-" },
+                { title: "Total Atend.", value: summary?.total || 0 },
+                { title: "Top Atendente", value: summary?.topAttendant ? `${summary.topAttendant} (${summary.topCount})` : "-" }
+                ].map((c, i) => (
+                    <Grid key={i} item xs={12} sm={6} md={4} lg={2.4}>
+                        <Paper elevation={3} sx={{ p: 2, mb: 1 }}>
+                            <Typography variant="subtitle1">{c.title}</Typography>
+                            <Typography variant="h4">{c.value}</Typography>
+                        </Paper>
+                    </Grid>
+                ))}
             </Grid>
 
-            {/* Gráficos */}
-            <Grid item xs={12} md={6} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Por Usuário</Typography>
-                <Bar
-                  data={{
-                    labels: byUser.map((i) => i.atendente),
-                    datasets: [{ label: "Qtd", data: byUser.map((i) => i.count) }]
-                  }}
-                  options={{ plugins: { legend: { display: false } } }}
-                  height={250}
-                />
-              </Paper>
+            {/* Linha 1 de gráficos */}
+            <Grid container spacing={2} mb={1} sx={{ pl: 3, pr: 3 }}>
+                <Grid item xs={12} md={4} lg={4} xl={4}>
+                    <CardChart title="Atendimentos por Usuário" empty={!byUser?.length}>
+                        {byUser?.length > 0 &&
+                            <Bar data={barUser} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
+                        }
+                    </CardChart>
+                </Grid>
+                <Grid item xs={12} md={4} lg={4} xl={4}>
+                    <CardChart title="Atendimentos por Dia" empty={!byDay?.length}>
+                        {byDay?.length > 0 &&
+                            <Line data={lineDay} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
+                        }
+                    </CardChart>
+                </Grid>
+                <Grid item xs={12} md={4} lg={4} xl={4}>
+                    <CardChart title="Evolução Mensal (Últimos 6 Meses)" empty={!byMonth?.length}>
+                        {byMonth?.length > 0 &&
+                            <Line data={lineMonth} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
+                        }
+                    </CardChart>
+                </Grid>
             </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Por Dia</Typography>
-                <Line
-                  data={{
-                    labels: byDay.map((i) => i.dia),
-                    datasets: [{ label: "Qtd", data: byDay.map((i) => i.count) }]
-                  }}
-                  options={{ plugins: { legend: { display: false } } }}
-                  height={250}
-                />
-              </Paper>
+
+            {/* Linha 2 de gráficos */}
+            <Grid container spacing={2} sx={{ pl: 3, pr: 3, pb: 2 }}>
+                <Grid item xs={12} md={4} lg={4} xl={4}>
+                    <CardChart title="Top Lojas" empty={!byStore?.length}>
+                        {byStore?.length > 0 &&
+                            <Pie data={pieStore} options={{
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: "bottom",
+                                        labels: { font: { size: 12 } }
+                                    }
+                                }
+                            }} height={250} />
+                        }
+                    </CardChart>
+                </Grid>
+                <Grid item xs={12} md={4} lg={4} xl={4}>
+                    <CardChart title="Top Ocorrências" empty={!byOccurrence?.length}>
+                        {byOccurrence?.length > 0 &&
+                            <Pie data={pieOccurrence} options={{
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: "bottom",
+                                        labels: { font: { size: 12 } }
+                                    }
+                                }
+                            }} height={250} />
+                        }
+                    </CardChart>
+                </Grid>
+                <Grid item xs={12} md={4} lg={4} xl={4}>
+                    <CardChart title="Atendimentos por Setor" empty={!bySector?.length}>
+                        {bySector?.length > 0 &&
+                            <Bar data={barSector} options={{
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+                            }} height={250} />
+                        }
+                    </CardChart>
+                </Grid>
             </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Mensal (6m)</Typography>
-                <Line
-                  data={{
-                    labels: byMonth.map((i) => i.mes),
-                    datasets: [{ label: "Qtd", data: byMonth.map((i) => i.count) }]
-                  }}
-                  options={{ plugins: { legend: { display: false } } }}
-                  height={250}
-                />
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Por Loja</Typography>
-                <Pie
-                  data={{
-                    labels: byStore.map((i) => i.loja),
-                    datasets: [{ label: "Qtd", data: byStore.map((i) => i.count) }]
-                  }}
-                  options={{ plugins: { legend: { position: "bottom" } } }}
-                  height={250}
-                />
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Por Ocorrência</Typography>
-                <Pie
-                  data={{
-                    labels: byOccurrence.map((i) => i.ocorrencia),
-                    datasets: [
-                      { label: "Qtd", data: byOccurrence.map((i) => i.count) }
-                    ]
-                  }}
-                  options={{ plugins: { legend: { position: "bottom" } } }}
-                  height={250}
-                />
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1">Por Setor</Typography>
-                <Bar
-                  data={{
-                    labels: bySector.map((i) => i.setor),
-                    datasets: [{ label: "Qtd", data: bySector.map((i) => i.count) }]
-                  }}
-                  options={{ plugins: { legend: { display: false } } }}
-                  height={250}
-                />
-              </Paper>
-            </Grid>
-          </Grid>
-        </>
-      )}
-    </Box>
-  );
+        </Box>
+    );
 }
