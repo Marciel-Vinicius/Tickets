@@ -51,16 +51,19 @@ export default function ReportDashboard() {
   const [endDate, setEndDate] = useState("");
   const [rawData, setRawData] = useState([]);
 
+  // Pega o token JWT armazenado após login
   const token = localStorage.getItem("token");
-  const headers = token
-    ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-    : { "Content-Type": "application/json" };
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: token ? `Bearer ${token}` : ""
+  };
 
   const fetchReports = async () => {
     setLoading(true);
     const qs =
       startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : "";
     try {
+      // Requisições paralelas para cada endpoint de relatório
       const [
         sumRes,
         userRes,
@@ -81,10 +84,11 @@ export default function ReportDashboard() {
 
       if (!sumRes.ok) {
         const txt = await sumRes.text();
-        console.error("Erro summary (HTML):", txt);
-        throw new Error("Falha ao carregar summary");
+        console.error("Resumo não retornou JSON:", txt);
+        throw new Error("Falha ao carregar resumo");
       }
 
+      // Atualiza estados com os dados JSON
       setSummary(await sumRes.json());
       setByUser(await userRes.json());
       setByDay(await dayRes.json());
@@ -93,13 +97,14 @@ export default function ReportDashboard() {
       setByOccurrence(await occRes.json());
       setBySector(await secRes.json());
 
+      // Busca dados brutos para exportar
       const rawRes = await fetch(`${API_URL}/api/atendimentos${qs}`, {
         headers
       });
       if (!rawRes.ok) {
         const txt = await rawRes.text();
-        console.error("Erro rawData (HTML):", txt);
-        throw new Error("Falha ao carregar rawData");
+        console.error("Dados brutos não retornaram JSON:", txt);
+        throw new Error("Falha ao carregar dados brutos");
       }
       setRawData(await rawRes.json());
     } catch (err) {
@@ -114,7 +119,9 @@ export default function ReportDashboard() {
   }, []);
 
   const handleFilter = () => {
-    if (startDate && endDate) fetchReports();
+    if (startDate && endDate) {
+      fetchReports();
+    }
   };
 
   const exportToCSV = () => {
@@ -171,6 +178,7 @@ export default function ReportDashboard() {
         Relatórios
       </Typography>
 
+      {/* Filtro de período e botão de exportação */}
       <Box display="flex" alignItems="center" mb={3}>
         <TextField
           label="Data Início"
@@ -196,7 +204,7 @@ export default function ReportDashboard() {
       </Box>
 
       <Grid container spacing={2}>
-        {/* Resumo */}
+        {/* Cards de resumo */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1">Tempo Médio</Typography>
@@ -205,7 +213,7 @@ export default function ReportDashboard() {
         </Grid>
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Total Atend.</Typography>
+            <Typography variant="subtitle1">Total de Atendimentos</Typography>
             <Typography variant="h4">{summary.total}</Typography>
           </Paper>
         </Grid>
@@ -221,7 +229,7 @@ export default function ReportDashboard() {
         {/* Gráficos */}
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Por Usuário</Typography>
+            <Typography variant="subtitle1">Atendimentos por Usuário</Typography>
             <Bar
               data={{
                 labels: byUser.map((i) => i.atendente),
@@ -232,9 +240,10 @@ export default function ReportDashboard() {
             />
           </Paper>
         </Grid>
+
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Por Dia</Typography>
+            <Typography variant="subtitle1">Atendimentos por Dia</Typography>
             <Line
               data={{
                 labels: byDay.map((i) => i.dia),
@@ -245,9 +254,10 @@ export default function ReportDashboard() {
             />
           </Paper>
         </Grid>
+
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Mensal (6 meses)</Typography>
+            <Typography variant="subtitle1">Evolução Mensal</Typography>
             <Line
               data={{
                 labels: byMonth.map((i) => i.mes),
@@ -258,9 +268,10 @@ export default function ReportDashboard() {
             />
           </Paper>
         </Grid>
+
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Por Loja</Typography>
+            <Typography variant="subtitle1">Atendimentos por Loja</Typography>
             <Pie
               data={{
                 labels: byStore.map((i) => i.loja),
@@ -271,9 +282,10 @@ export default function ReportDashboard() {
             />
           </Paper>
         </Grid>
+
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Por Ocorrência</Typography>
+            <Typography variant="subtitle1">Atendimentos por Ocorrência</Typography>
             <Pie
               data={{
                 labels: byOccurrence.map((i) => i.ocorrencia),
@@ -284,9 +296,10 @@ export default function ReportDashboard() {
             />
           </Paper>
         </Grid>
+
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1">Por Setor</Typography>
+            <Typography variant="subtitle1">Atendimentos por Setor</Typography>
             <Bar
               data={{
                 labels: bySector.map((i) => i.setor),
