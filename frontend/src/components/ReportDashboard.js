@@ -53,19 +53,35 @@ export default function ReportDashboard() {
 
   const fetchReports = async () => {
     setLoading(true);
-    const qs = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : "";
+    const qs =
+      startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : "";
     try {
-      // Carrega resumo e todos os gráficos
-      const [sumRes, userRes, dayRes, storeRes, occRes, secRes, monRes] =
-        await Promise.all([
-          fetch(`${API_URL}/reports/summary${qs}`),
-          fetch(`${API_URL}/reports/byUser${qs}`),
-          fetch(`${API_URL}/reports/byDay${qs}`),
-          fetch(`${API_URL}/reports/byStore${qs}`),
-          fetch(`${API_URL}/reports/byOccurrence${qs}`),
-          fetch(`${API_URL}/reports/bySector${qs}`),
-          fetch(`${API_URL}/reports/byMonth${qs}`)
-        ]);
+      // chamadas para /api/reports/*
+      const [
+        sumRes,
+        userRes,
+        dayRes,
+        storeRes,
+        occRes,
+        secRes,
+        monRes
+      ] = await Promise.all([
+        fetch(`${API_URL}/api/reports/summary${qs}`),
+        fetch(`${API_URL}/api/reports/byUser${qs}`),
+        fetch(`${API_URL}/api/reports/byDay${qs}`),
+        fetch(`${API_URL}/api/reports/byStore${qs}`),
+        fetch(`${API_URL}/api/reports/byOccurrence${qs}`),
+        fetch(`${API_URL}/api/reports/bySector${qs}`),
+        fetch(`${API_URL}/api/reports/byMonth${qs}`)
+      ]);
+
+      // check de res.ok opcional para depuração
+      if (!sumRes.ok) {
+        const txt = await sumRes.text();
+        console.error("Erro summary (HTML):", txt);
+        throw new Error("Summary não retornou JSON");
+      }
+
       setSummary(await sumRes.json());
       setByUser(await userRes.json());
       setByDay(await dayRes.json());
@@ -74,8 +90,13 @@ export default function ReportDashboard() {
       setBySector(await secRes.json());
       setByMonth(await monRes.json());
 
-      // Carrega dados brutos para exportar
-      const rawRes = await fetch(`${API_URL}/atendimentos${qs}`);
+      // dados brutos para CSV
+      const rawRes = await fetch(`${API_URL}/api/atendimentos${qs}`);
+      if (!rawRes.ok) {
+        const txt = await rawRes.text();
+        console.error("Erro rawData (HTML):", txt);
+        throw new Error("RawData não retornou JSON");
+      }
       setRawData(await rawRes.json());
     } catch (err) {
       console.error("Erro ao carregar relatórios:", err);
@@ -146,7 +167,7 @@ export default function ReportDashboard() {
         Relatórios
       </Typography>
 
-      {/* FILTROS E EXPORTAÇÃO */}
+      {/* FILTRO E EXPORTAÇÃO */}
       <Box display="flex" alignItems="center" mb={3}>
         <TextField
           label="Data Início"
@@ -257,9 +278,7 @@ export default function ReportDashboard() {
             <Pie
               data={{
                 labels: byOccurrence.map((i) => i.ocorrencia),
-                datasets: [
-                  { label: "Qtd", data: byOccurrence.map((i) => i.count) }
-                ]
+                datasets: [{ label: "Qtd", data: byOccurrence.map((i) => i.count) }]
               }}
               options={{ plugins: { legend: { position: "bottom" } } }}
               height={250}
