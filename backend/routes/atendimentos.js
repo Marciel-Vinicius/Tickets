@@ -84,6 +84,7 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia } = req.body;
+
     await query(
       `
       UPDATE atendimentos
@@ -99,6 +100,7 @@ router.put('/:id', async (req, res) => {
       `,
       [atendente, dia, horaInicio, horaFim, loja, contato, ocorrencia, id]
     );
+
     res.json({ message: 'Atendimento atualizado com sucesso.' });
   } catch (err) {
     console.error(err);
