@@ -111,6 +111,7 @@ router.delete('/:id', async (req, res) => {
 router.get('/report/:date', async (req, res) => {
   const date = req.params.date;       // 'YYYY-MM-DD'
   const atendente = req.user.username;
+
   try {
     // 1) Buscar os registros do plantão do dia
     const { rows: items } = await query(
@@ -127,6 +128,46 @@ router.get('/report/:date', async (req, res) => {
       `,
       [date]
     );
+
+    // 1.1) Calcular total de horas trabalhadas no dia (somando atendimentos)
+    const totalMinutesWorked = items.reduce((acc, item) => {
+      if (!item.hora_inicio || !item.hora_fim) return acc;
+
+      const [sh, sm] = item.hora_inicio.split(':').map(Number);
+      const [eh, em] = item.hora_fim.split(':').map(Number);
+
+      if (
+        Number.isNaN(sh) || Number.isNaN(sm) ||
+        Number.isNaN(eh) || Number.isNaN(em)
+      ) {
+        return acc;
+      }
+
+      const start = sh * 60 + sm;
+      const end = eh * 60 + em;
+
+      if (end <= start) return acc; // ignora horários invertidos/iguais
+
+      return acc + (end - start);
+    }, 0);
+
+    const PLANTAO_MINUTES = 7 * 60;
+
+    // Considerar as 7h de plantão apenas para sábado
+    const isSaturday = new Date(`${date}T00:00:00`).getDay() === 6;
+
+    let sobreavisoMinutes = 0;
+    if (isSaturday) {
+      // Ex.: 1h atendida => 6h sobreaviso
+      sobreavisoMinutes = Math.max(PLANTAO_MINUTES - totalMinutesWorked, 0);
+    }
+
+    const formatHours = (mins) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      if (m === 0) return `${h}h`;
+      return `${h}h${m.toString().padStart(2, '0')}min`;
+    };
 
     // 2) Contar quantos sábados distintos já trabalhou até essa data
     const { rows: satRows } = await query(
@@ -175,6 +216,15 @@ router.get('/report/:date', async (req, res) => {
     doc.font('Helvetica').fontSize(12).text(dateText);
     doc.moveDown();
 
+    // Se for sábado, mostra resumo das horas de plantão
+    if (isSaturday) {
+      doc.font('Helvetica-Bold').fontSize(11).text('Resumo do plantão de sábado:');
+      doc.font('Helvetica').fontSize(10);
+      doc.text(`Horas trabalhadas: ${formatHours(totalMinutesWorked)}`);
+      doc.text(`Horas de sobreaviso (até completar 7h): ${formatHours(sobreavisoMinutes)}`);
+      doc.moveDown();
+    }
+
     // Títulos das colunas
     const startY = doc.y;
     doc.font('Helvetica-Bold').fontSize(10);
@@ -215,13 +265,15 @@ router.get('/report/:date', async (req, res) => {
     });
 
     // Desenhar linhas da tabela
-    rowYs.forEach(row => {
-      doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
-    });
-    doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
-    [40, 100, 160, 260, 360, 560].forEach(x => {
-      doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
-    });
+    if (rowYs.length > 0) {
+      rowYs.forEach(row => {
+        doc.moveTo(40, row.y).lineTo(560, row.y).stroke();
+      });
+      doc.moveTo(40, currentY).lineTo(560, currentY).stroke();
+      [40, 100, 160, 260, 360, 560].forEach(x => {
+        doc.moveTo(x, rowYs[0].y).lineTo(x, currentY).stroke();
+      });
+    }
 
     // Rodapé de assinaturas
     const footerY = doc.page.height - doc.page.margins.bottom - 50;
